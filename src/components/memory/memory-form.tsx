@@ -164,7 +164,7 @@ export function MemoryForm({ userId, onSaved }: Props) {
                   <Label className="text-xs">分类</Label>
                   <Select
                     value={extracted.category}
-                    onValueChange={(v) => updateField("category", v)}
+                    onValueChange={(v) => updateField("category", v ?? "其他")}
                   >
                     <SelectTrigger className="h-8 text-sm">
                       <SelectValue />

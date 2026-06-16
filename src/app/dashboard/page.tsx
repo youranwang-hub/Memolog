@@ -64,7 +64,7 @@ export default function DashboardPage() {
             className="h-8 pl-8 text-sm"
           />
         </div>
-        <Select value={category} onValueChange={setCategory}>
+        <Select value={category} onValueChange={(v) => setCategory(v ?? "all")}>
           <SelectTrigger className="h-8 w-[90px] text-sm">
             <Filter className="h-3 w-3 mr-1" />
             <SelectValue placeholder="分类" />
@@ -78,7 +78,7 @@ export default function DashboardPage() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={emotion} onValueChange={setEmotion}>
+        <Select value={emotion} onValueChange={(v) => setEmotion(v ?? "all")}>
           <SelectTrigger className="h-8 w-[90px] text-sm">
             <SelectValue placeholder="情绪" />
           </SelectTrigger>
