@@ -1,0 +1,43 @@
+import { NextResponse } from "next/server";
+import { chat } from "@/lib/deepseek";
+
+const SYSTEM_PROMPT = `你是一个信息结构化助手。用户输入了一条个人经历，请提炼为以下JSON格式。
+
+规则：
+- event_date：推断日期，格式 YYYY-MM。如果用户没写，用 "未知"
+- category：只能是 竞赛/项目/实习/课程/生活/技能/其他
+- title：简短的标题（10字以内）
+- result：成果总结（如果有），否则为 ""
+- content：1-2句描述做了什么
+- emotion：只能是 proud/excited/relieved/neutral/tired/frustrated/sad
+- emotion_note：保留用户表达的情绪原文，如果没有则为 ""
+- tags：提炼2-5个关键词作为数组
+
+只返回JSON，不要其他内容。`;
+
+export async function POST(request: Request) {
+  try {
+    const { rawInput } = await request.json();
+
+    if (!rawInput || rawInput.trim().length === 0) {
+      return NextResponse.json({ error: "输入不能为空" }, { status: 400 });
+    }
+
+    const text = await chat({
+      systemPrompt: SYSTEM_PROMPT,
+      userPrompt: rawInput,
+      maxTokens: 500,
+    });
+
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return NextResponse.json({ error: "AI 解析失败，请重新描述" }, { status: 500 });
+    }
+
+    const extracted = JSON.parse(jsonMatch[0]);
+    return NextResponse.json({ extracted });
+  } catch (error) {
+    console.error("Extract error:", error);
+    return NextResponse.json({ error: "提炼失败，请稍后重试" }, { status: 500 });
+  }
+}
