@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 export default function AuthCallbackPage() {
   useEffect(() => {
     async function handleCallback() {
-      const { data, error } = await supabase.auth.getSession();
+      const { data, error } = await getSupabase().auth.getSession();
       if (error) {
         console.error("Callback session error:", error);
       }

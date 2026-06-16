@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import type { User, Session } from "@supabase/supabase-js";
 
 interface AuthContextType {
@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
+    getSupabase().auth.getSession().then(({ data: { session }, error }) => {
       console.log("[Auth] getSession:", { hasSession: !!session, userId: session?.user?.id, error: error?.message });
       setSession(session);
       setUser(session?.user ?? null);
@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = getSupabase().auth.onAuthStateChange((event, session) => {
       console.log("[Auth] onAuthStateChange:", event, { hasSession: !!session });
       setSession(session);
       setUser(session?.user ?? null);
@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     console.log("[Auth] signIn called:", email);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await getSupabase().auth.signInWithPassword({ email, password });
     console.log("[Auth] signIn result:", { hasSession: !!data.session, userId: data.user?.id, error: error?.message });
     if (error) return { error: error.message };
     return {};
@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = useCallback(async (email: string, password: string) => {
     console.log("[Auth] signUp called:", email);
-    const { error, data } = await supabase.auth.signUp({
+    const { error, data } = await getSupabase().auth.signUp({
       email,
       password,
       options: {
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    await getSupabase().auth.signOut();
     router.push("/");
   }, [router]);
 

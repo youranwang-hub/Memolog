@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import type { Memory } from "@/lib/types";
 
 export async function fetchMemories({
@@ -10,7 +10,7 @@ export async function fetchMemories({
   emotion?: string;
   search?: string;
 } = {}) {
-  let query = supabase.from("memories").select("*").order("created_at", { ascending: false });
+  let query = getSupabase().from("memories").select("*").order("created_at", { ascending: false });
 
   if (category && category !== "all") {
     query = query.eq("category", category);
@@ -28,19 +28,19 @@ export async function fetchMemories({
 }
 
 export async function createMemory(memory: Omit<Memory, "id" | "created_at">) {
-  const { data, error } = await supabase.from("memories").insert(memory).select().single();
+  const { data, error } = await getSupabase().from("memories").insert(memory).select().single();
   if (error) throw error;
   return data as Memory;
 }
 
 export async function getMemory(id: string) {
-  const { data, error } = await supabase.from("memories").select("*").eq("id", id).single();
+  const { data, error } = await getSupabase().from("memories").select("*").eq("id", id).single();
   if (error) throw error;
   return data as Memory;
 }
 
 export async function updateMemory(id: string, updates: Partial<Memory>) {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from("memories")
     .update(updates)
     .eq("id", id)
@@ -51,6 +51,6 @@ export async function updateMemory(id: string, updates: Partial<Memory>) {
 }
 
 export async function deleteMemory(id: string) {
-  const { error } = await supabase.from("memories").delete().eq("id", id);
+  const { error } = await getSupabase().from("memories").delete().eq("id", id);
   if (error) throw error;
 }
