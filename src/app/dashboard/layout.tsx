@@ -61,7 +61,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger>
               <Button variant="ghost" size="sm">
                 <User className="h-4 w-4 mr-1.5" />
                 <span className="hidden sm:inline">{user.email}</span>
