@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import type { Memory, Category, Emotion } from "@/lib/types";
 import { CATEGORIES, EMOTIONS, EMOTION_MAP } from "@/lib/types";
 import { getMemory, updateMemory, deleteMemory } from "@/lib/memories";
+import { normalizeEventDate } from "@/lib/dates";
 
 export default function MemoryDetailPage({
   params,
@@ -76,7 +77,10 @@ export default function MemoryDetailPage({
   async function handleSave() {
     setSaving(true);
     try {
-      const updated = await updateMemory(id, form);
+      const updated = await updateMemory(id, {
+        ...form,
+        event_date: normalizeEventDate(form.event_date),
+      });
       setMemory(updated);
       setEditing(false);
       toast.success("已更新");
@@ -168,7 +172,7 @@ export default function MemoryDetailPage({
             {memory.content && (
               <div>
                 <Label className="text-xs text-muted-foreground">做了什么</Label>
-                <p className="text-sm mt-0.5">{memory.content}</p>
+                <p className="text-sm mt-0.5 whitespace-pre-wrap leading-relaxed">{memory.content}</p>
               </div>
             )}
 
@@ -239,10 +243,14 @@ export default function MemoryDetailPage({
 
             <div className="space-y-1.5">
               <Label className="text-xs">做了什么</Label>
+              <p className="text-xs text-muted-foreground">
+                可以写完整经历，包括背景、你的角色、具体行动和结果。后续生成会更精准。
+              </p>
               <Textarea
                 value={form.content}
                 onChange={(e) => setForm({ ...form, content: e.target.value })}
-                rows={3}
+                rows={8}
+                className="resize-y leading-relaxed"
               />
             </div>
 

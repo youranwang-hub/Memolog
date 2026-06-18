@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { MemoryForm } from "@/components/memory/memory-form";
 import { MemoryCard } from "@/components/memory/memory-card";
@@ -17,17 +17,68 @@ import {
 } from "@/components/ui/select";
 import { GitFork, Grid2X2, Search, Filter, X } from "lucide-react";
 import type { Memory } from "@/lib/types";
-import { CATEGORIES, EMOTIONS } from "@/lib/types";
+import { CATEGORIES } from "@/lib/types";
 import { fetchMemories } from "@/lib/memories";
 import { fetchProfile } from "@/lib/profile";
+import { normalizeEventDate } from "@/lib/dates";
+
+type TimeFilter = "all" | "unknown" | `month:${string}` | `year:${string}`;
+
+function parseEventDate(value: string) {
+  if (!value || value === "未知") return null;
+  const normalized = normalizeEventDate(value, "");
+  if (!normalized) return null;
+  const match = normalized.match(/^(\d{4})-(\d{2})$/);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  if (!Number.isFinite(year) || !Number.isFinite(month)) return null;
+
+  return new Date(year, Math.max(0, Math.min(month, 11)), 1);
+}
+
+function getEventMonthKey(memory: Memory) {
+  const eventDate = parseEventDate(memory.event_date);
+  if (!eventDate) return null;
+
+  const year = eventDate.getFullYear();
+  const month = String(eventDate.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
+function getEventYearKey(memory: Memory) {
+  const eventDate = parseEventDate(memory.event_date);
+  return eventDate ? String(eventDate.getFullYear()) : null;
+}
+
+function formatMonthLabel(value: string) {
+  const [year, month] = value.split("-");
+  return `${year}年${Number(month)}月`;
+}
+
+function matchesTimeFilter(memory: Memory, filter: TimeFilter) {
+  if (filter === "all") return true;
+
+  const eventDate = parseEventDate(memory.event_date);
+  if (filter === "unknown") return !eventDate;
+  if (!eventDate) return false;
+
+  if (filter.startsWith("month:")) {
+    return getEventMonthKey(memory) === filter.replace("month:", "");
+  }
+
+  return getEventYearKey(memory) === filter.replace("year:", "");
+}
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const [memories, setMemories] = useState<Memory[]>([]);
+  const [baseMemories, setBaseMemories] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("all");
-  const [emotion, setEmotion] = useState<string>("all");
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
   const [view, setView] = useState<"grid" | "graph">("grid");
   const [showProfileNudge, setShowProfileNudge] = useState(false);
 
@@ -37,16 +88,16 @@ export default function DashboardPage() {
     try {
       const data = await fetchMemories({
         category: category !== "all" ? category : undefined,
-        emotion: emotion !== "all" ? emotion : undefined,
         search: search.trim() || undefined,
       });
-      setMemories(data);
+      setBaseMemories(data);
+      setMemories(data.filter((memory) => matchesTimeFilter(memory, timeFilter)));
     } catch {
       // silent
     } finally {
       setLoading(false);
     }
-  }, [user, category, emotion, search]);
+  }, [user, category, search, timeFilter]);
 
   useEffect(() => {
     let active = true;
@@ -57,10 +108,12 @@ export default function DashboardPage() {
       try {
         const data = await fetchMemories({
           category: category !== "all" ? category : undefined,
-          emotion: emotion !== "all" ? emotion : undefined,
           search: search.trim() || undefined,
         });
-        if (active) setMemories(data);
+        if (active) {
+          setBaseMemories(data);
+          setMemories(data.filter((memory) => matchesTimeFilter(memory, timeFilter)));
+        }
       } catch {
         // silent
       } finally {
@@ -73,7 +126,7 @@ export default function DashboardPage() {
     return () => {
       active = false;
     };
-  }, [user, category, emotion, search]);
+  }, [user, category, search, timeFilter]);
 
   useEffect(() => {
     let active = true;
@@ -101,7 +154,33 @@ export default function DashboardPage() {
     };
   }, [user]);
 
-  const hasFilters = category !== "all" || emotion !== "all" || search.trim() !== "";
+  const hasFilters = category !== "all" || timeFilter !== "all" || search.trim() !== "";
+  const timeOptions = useMemo(() => {
+    const monthKeys = Array.from(
+      new Set(baseMemories.map(getEventMonthKey).filter((value): value is string => Boolean(value)))
+    ).sort((a, b) => b.localeCompare(a));
+    const hasUnknown = baseMemories.some((memory) => !parseEventDate(memory.event_date));
+
+    if (monthKeys.length > 12) {
+      const years = Array.from(new Set(monthKeys.map((key) => key.slice(0, 4)))).sort((a, b) =>
+        b.localeCompare(a)
+      );
+      return [
+        { value: "all" as TimeFilter, label: "全部时间" },
+        ...years.map((year) => ({ value: `year:${year}` as TimeFilter, label: `${year}年` })),
+        ...(hasUnknown ? [{ value: "unknown" as TimeFilter, label: "时间未知" }] : []),
+      ];
+    }
+
+    return [
+      { value: "all" as TimeFilter, label: "全部时间" },
+      ...monthKeys.map((month) => ({
+        value: `month:${month}` as TimeFilter,
+        label: formatMonthLabel(month),
+      })),
+      ...(hasUnknown ? [{ value: "unknown" as TimeFilter, label: "时间未知" }] : []),
+    ];
+  }, [baseMemories]);
 
   if (!user) return null;
 
@@ -150,15 +229,14 @@ export default function DashboardPage() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={emotion} onValueChange={(v) => setEmotion(v ?? "all")}>
-          <SelectTrigger className="h-8 w-[90px] text-sm">
-            <SelectValue placeholder="情绪" />
+        <Select value={timeFilter} onValueChange={(v) => setTimeFilter((v ?? "all") as TimeFilter)}>
+          <SelectTrigger className="h-8 w-[98px] text-sm">
+            <SelectValue placeholder="时间" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">全部情绪</SelectItem>
-            {EMOTIONS.map((e) => (
-              <SelectItem key={e.value} value={e.value}>
-                {e.emoji} {e.label}
+            {timeOptions.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -171,7 +249,7 @@ export default function DashboardPage() {
             onClick={() => {
               setSearch("");
               setCategory("all");
-              setEmotion("all");
+              setTimeFilter("all");
             }}
           >
             <X className="h-3 w-3 mr-1" />

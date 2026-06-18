@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,19 +12,13 @@ import { Clock3, Copy, History, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { getAuthHeaders } from "@/lib/api-client";
 import { useAuth } from "@/components/auth/auth-provider";
-import type { Memory } from "@/lib/types";
+import type { GeneratedHistory, GenerateType, Memory } from "@/lib/types";
 import { fetchMemories } from "@/lib/memories";
-
-type GenerateType = "resume" | "intro" | "custom";
-
-interface GeneratedHistoryItem {
-  id: string;
-  type: GenerateType;
-  title: string;
-  promptSummary: string;
-  content: string;
-  createdAt: string;
-}
+import {
+  createGeneratedHistory,
+  deleteGeneratedHistory,
+  fetchGeneratedHistories,
+} from "@/lib/generated-history";
 
 const TYPE_LABELS: Record<GenerateType, string> = {
   resume: "简历",
@@ -40,10 +34,6 @@ function emptyResults() {
   };
 }
 
-function makeHistoryKey(userId?: string) {
-  return `memolog:generation-history:${userId ?? "anonymous"}:v1`;
-}
-
 function formatTime(value: string) {
   return new Intl.DateTimeFormat("zh-CN", {
     month: "2-digit",
@@ -57,17 +47,17 @@ export default function GeneratePage() {
   const { user } = useAuth();
   const [memories, setMemories] = useState<Memory[]>([]);
   const [loadingMemories, setLoadingMemories] = useState(true);
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [activeType, setActiveType] = useState<GenerateType>("resume");
   const [results, setResults] = useState<Record<GenerateType, string>>(emptyResults);
-  const [history, setHistory] = useState<GeneratedHistoryItem[]>([]);
+  const [history, setHistory] = useState<GeneratedHistory[]>([]);
 
   const [resumePosition, setResumePosition] = useState("");
   const [resumeJd, setResumeJd] = useState("");
   const [introScene, setIntroScene] = useState("");
   const [customPrompt, setCustomPrompt] = useState("");
 
-  const historyKey = useMemo(() => makeHistoryKey(user?.id), [user?.id]);
   const activeResult = results[activeType];
   const activeHistory = history.filter((item) => item.type === activeType);
 
@@ -78,66 +68,47 @@ export default function GeneratePage() {
   }, []);
 
   useEffect(() => {
-    let active = true;
+    fetchGeneratedHistories()
+      .then(setHistory)
+      .catch(() => toast.error("生成历史读取失败"))
+      .finally(() => setLoadingHistory(false));
+  }, []);
 
-    async function loadHistory() {
-      await Promise.resolve();
-      try {
-        const stored = window.localStorage.getItem(historyKey);
-        if (active) setHistory(stored ? JSON.parse(stored) : []);
-      } catch {
-        if (active) setHistory([]);
-      }
-    }
-
-    void loadHistory();
-
-    return () => {
-      active = false;
-    };
-  }, [historyKey]);
-
-  function saveHistory(nextHistory: GeneratedHistoryItem[]) {
-    setHistory(nextHistory);
-    window.localStorage.setItem(historyKey, JSON.stringify(nextHistory));
-  }
-
-  function createHistoryItem(type: GenerateType, content: string): GeneratedHistoryItem {
-    const createdAt = new Date().toISOString();
-
+  function getHistoryDraft(type: GenerateType, content: string) {
     if (type === "resume") {
       return {
-        id: crypto.randomUUID(),
         type,
         title: resumePosition.trim() || "通用简历",
-        promptSummary: resumeJd.trim() ? `JD ${resumeJd.trim().slice(0, 32)}` : "未填写 JD",
+        prompt_summary: resumeJd.trim() ? `JD ${resumeJd.trim().slice(0, 32)}` : "未填写 JD",
         content,
-        createdAt,
+        inputs: { position: resumePosition, jd: resumeJd },
       };
     }
 
     if (type === "intro") {
       return {
-        id: crypto.randomUUID(),
         type,
         title: introScene.trim() || "面试自我介绍",
-        promptSummary: "按场景生成",
+        prompt_summary: "按场景生成",
         content,
-        createdAt,
+        inputs: { scene: introScene },
       };
     }
 
     return {
-      id: crypto.randomUUID(),
       type,
       title: customPrompt.trim().slice(0, 24) || "自定义生成",
-      promptSummary: customPrompt.trim().slice(0, 48) || "未填写需求",
+      prompt_summary: customPrompt.trim().slice(0, 48) || "未填写需求",
       content,
-      createdAt,
+      inputs: { prompt: customPrompt },
     };
   }
 
   async function handleGenerate(type: GenerateType) {
+    if (!user) {
+      toast.error("请先登录");
+      return;
+    }
     if (memories.length === 0) {
       toast.error("还没有记录，先去记一些经历吧");
       return;
@@ -165,11 +136,13 @@ export default function GeneratePage() {
       }
 
       const content = data.content as string;
-      const item = createHistoryItem(type, content);
-      const nextHistory = [item, ...history.filter((oldItem) => oldItem.id !== item.id)].slice(0, 90);
+      const item = await createGeneratedHistory({
+        user_id: user.id,
+        ...getHistoryDraft(type, content),
+      });
 
       setResults((current) => ({ ...current, [type]: content }));
-      saveHistory(nextHistory);
+      setHistory((current) => [item, ...current]);
       toast.success(`已保存到${TYPE_LABELS[type]}历史`);
     } catch {
       toast.error("生成失败，请稍后重试");
@@ -178,14 +151,19 @@ export default function GeneratePage() {
     }
   }
 
-  function handleSelectHistory(item: GeneratedHistoryItem) {
+  function handleSelectHistory(item: GeneratedHistory) {
     setActiveType(item.type);
     setResults((current) => ({ ...current, [item.type]: item.content }));
   }
 
-  function handleDeleteHistory(id: string) {
-    const nextHistory = history.filter((item) => item.id !== id);
-    saveHistory(nextHistory);
+  async function handleDeleteHistory(id: string) {
+    try {
+      await deleteGeneratedHistory(id);
+      setHistory((current) => current.filter((item) => item.id !== id));
+      toast.success("历史已删除");
+    } catch {
+      toast.error("删除失败，请稍后重试");
+    }
   }
 
   async function handleCopy() {
@@ -336,7 +314,11 @@ export default function GeneratePage() {
             </Badge>
           </div>
 
-          {activeHistory.length === 0 ? (
+          {loadingHistory ? (
+            <div className="rounded-md border border-dashed p-4 text-xs text-muted-foreground">
+              正在读取历史...
+            </div>
+          ) : activeHistory.length === 0 ? (
             <div className="rounded-md border border-dashed p-4 text-xs text-muted-foreground">
               这个模块还没有历史。下一次生成后会自动保存到这里。
             </div>
@@ -347,20 +329,27 @@ export default function GeneratePage() {
                   key={item.id}
                   className="rounded-md border bg-card p-3 hover:border-stone-400 transition-colors"
                 >
-                  <button
-                    type="button"
-                    className="w-full text-left space-y-1"
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    className="w-full text-left space-y-1 cursor-pointer"
                     onClick={() => handleSelectHistory(item)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleSelectHistory(item);
+                      }
+                    }}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-sm font-medium leading-snug line-clamp-2">{item.title}</p>
                       <span className="shrink-0 inline-flex items-center text-[11px] text-muted-foreground">
                         <Clock3 className="h-3 w-3 mr-1" />
-                        {formatTime(item.createdAt)}
+                        {formatTime(item.created_at)}
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2">{item.promptSummary}</p>
-                  </button>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{item.prompt_summary}</p>
+                  </div>
                   <div className="mt-2 flex justify-end">
                     <Button
                       variant="ghost"

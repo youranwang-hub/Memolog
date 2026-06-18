@@ -104,7 +104,14 @@ export function MemoryGraph({ memories }: Props) {
       },
     ];
     const edges: GraphEdge[] = [];
+    const edgeIds = new Set<string>();
     const categoryPositions = new Map<Category, { x: number; y: number }>();
+
+    function addEdge(edge: GraphEdge) {
+      if (edgeIds.has(edge.id)) return;
+      edgeIds.add(edge.id);
+      edges.push(edge);
+    }
 
     activeCategories.forEach((category, index) => {
       const angle = -Math.PI / 2 + (index / Math.max(activeCategories.length, 1)) * Math.PI * 2;
@@ -122,7 +129,7 @@ export function MemoryGraph({ memories }: Props) {
           seedY: y,
           count: categoryCounts.get(category) ?? 0,
         });
-        edges.push({ id: `root:${category}`, from: "root", to: `category:${category}`, type: "category" });
+        addEdge({ id: `root:${category}`, from: "root", to: `category:${category}`, type: "category" });
       }
     });
 
@@ -154,7 +161,7 @@ export function MemoryGraph({ memories }: Props) {
             seedY: y,
             memory,
           });
-          edges.push({
+          addEdge({
             id: `${showCategories ? `category:${category}` : "root"}:${memoryId}`,
             from: showCategories ? `category:${category}` : "root",
             to: memoryId,
@@ -181,16 +188,16 @@ export function MemoryGraph({ memories }: Props) {
             .forEach((memory) => {
               const memoryId = `memory:${memory.id}`;
               if (visibleMemoryIds.has(memoryId)) {
-                edges.push({ id: `${memoryId}:${tagId}`, from: memoryId, to: tagId, type: "tag" });
+                addEdge({ id: `${memoryId}:${tagId}`, from: memoryId, to: tagId, type: "tag" });
               } else if (showCategories) {
-                edges.push({
+                addEdge({
                   id: `category:${memory.category}:${tagId}`,
                   from: `category:${memory.category}`,
                   to: tagId,
                   type: "tag",
                 });
               } else {
-                edges.push({ id: `root:${tagId}`, from: "root", to: tagId, type: "tag" });
+                addEdge({ id: `root:${tagId}`, from: "root", to: tagId, type: "tag" });
               }
             });
         });

@@ -46,13 +46,37 @@ export async function fetchProfile(userId: string) {
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (!error) return data as Profile | null;
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  return normalizeStoredProfile(user?.user_metadata?.memolog_profile, userId, user?.email);
+  if (!error && data) return data as Profile;
+
+  const metadataProfile = normalizeStoredProfile(
+    user?.user_metadata?.memolog_profile,
+    userId,
+    user?.email
+  );
+
+  if (!metadataProfile) return null;
+
+  if (!error && !data) {
+    const { data: migratedProfile } = await supabase
+      .from("profiles")
+      .upsert(
+        {
+          ...metadataProfile,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" }
+      )
+      .select()
+      .single();
+
+    return (migratedProfile as Profile | null) ?? metadataProfile;
+  }
+
+  return metadataProfile;
 }
 
 export async function saveProfile(profile: ProfileInput) {

@@ -2,6 +2,8 @@ export type Emotion = "proud" | "excited" | "relieved" | "neutral" | "tired" | "
 
 export type Category = "竞赛" | "项目" | "实习" | "课程" | "生活" | "技能" | "其他";
 
+export type GenerateType = "resume" | "intro" | "custom";
+
 export interface Memory {
   id: string;
   user_id: string;
@@ -46,6 +48,19 @@ export interface Profile {
 }
 
 export type ProfileInput = Omit<Profile, "created_at" | "updated_at">;
+
+export interface GeneratedHistory {
+  id: string;
+  user_id: string;
+  created_at: string;
+  type: GenerateType;
+  title: string;
+  prompt_summary: string;
+  content: string;
+  inputs: Record<string, unknown>;
+}
+
+export type GeneratedHistoryInput = Omit<GeneratedHistory, "id" | "created_at">;
 
 export const CATEGORIES: Category[] = ["竞赛", "项目", "实习", "课程", "生活", "技能", "其他"];
 

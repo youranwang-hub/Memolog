@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/components/auth/auth-provider";
+import { cn } from "@/lib/utils";
 import { IdCard, LayoutList, LogOut, Sparkles, User } from "lucide-react";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -76,11 +77,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <DropdownMenu>
-            <DropdownMenuTrigger>
-              <Button variant="ghost" size="sm" className="max-w-[140px] sm:max-w-none">
-                <User className="h-4 w-4 sm:mr-1.5" />
-                <span className="hidden sm:inline truncate">{user.email}</span>
-              </Button>
+            <DropdownMenuTrigger
+              className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "max-w-[140px] sm:max-w-none")}
+            >
+              <User className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden sm:inline truncate">{user.email}</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={signOut}>

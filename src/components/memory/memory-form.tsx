@@ -26,6 +26,7 @@ import { Plus, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { createMemory } from "@/lib/memories";
 import { getAuthHeaders } from "@/lib/api-client";
+import { normalizeEventDate } from "@/lib/dates";
 import type { ExtractedMemory } from "@/lib/types";
 import { CATEGORIES, EMOTIONS } from "@/lib/types";
 
@@ -81,6 +82,7 @@ export function MemoryForm({ userId, onSaved }: Props) {
       await createMemory({
         user_id: userId,
         ...extracted,
+        event_date: normalizeEventDate(extracted.event_date),
         raw_input: rawInput.trim(),
       });
 
@@ -108,7 +110,7 @@ export function MemoryForm({ userId, onSaved }: Props) {
           <div className="flex gap-2">
             <div className="flex-1">
               <Textarea
-                placeholder="今天做了什么？直接写下来，AI 帮你整理…"
+                placeholder="今天做了什么？可以写完整经历、过程和细节，AI 帮你整理…"
                 value={rawInput}
                 onChange={(e) => setRawInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -202,10 +204,13 @@ export function MemoryForm({ userId, onSaved }: Props) {
 
               <div className="space-y-1.5">
                 <Label className="text-xs">做了什么</Label>
+                <p className="text-xs text-muted-foreground">
+                  可以写完整经历，包括背景、你的角色、具体行动和结果。后续生成会更精准。
+                </p>
                 <Textarea
                   value={extracted.content}
                   onChange={(e) => updateField("content", e.target.value)}
-                  rows={2}
+                  rows={5}
                   className="resize-none text-sm"
                 />
               </div>
