@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit, requireUser } from "@/lib/api-auth";
 import { chat } from "@/lib/deepseek";
 
 const SYSTEM_PROMPT = `你是一个信息结构化助手。用户输入了一条个人经历，请提炼为以下JSON格式。
@@ -17,15 +18,25 @@ const SYSTEM_PROMPT = `你是一个信息结构化助手。用户输入了一条
 
 export async function POST(request: Request) {
   try {
-    const { rawInput } = await request.json();
+    const { error, user } = await requireUser(request);
+    if (error) return error;
 
-    if (!rawInput || rawInput.trim().length === 0) {
+    const limited = checkRateLimit(`extract:${user.id}`);
+    if (limited) return limited;
+
+    const { rawInput } = await request.json();
+    const normalizedInput = typeof rawInput === "string" ? rawInput.trim() : "";
+
+    if (!normalizedInput) {
       return NextResponse.json({ error: "输入不能为空" }, { status: 400 });
+    }
+    if (normalizedInput.length > 2000) {
+      return NextResponse.json({ error: "单条记录太长了，请先拆成几条保存" }, { status: 400 });
     }
 
     const text = await chat({
       systemPrompt: SYSTEM_PROMPT,
-      userPrompt: rawInput,
+      userPrompt: normalizedInput,
       maxTokens: 500,
     });
 

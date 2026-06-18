@@ -25,7 +25,8 @@ import {
 import { Plus, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { createMemory } from "@/lib/memories";
-import type { ExtractedMemory, Category, Emotion } from "@/lib/types";
+import { getAuthHeaders } from "@/lib/api-client";
+import type { ExtractedMemory } from "@/lib/types";
 import { CATEGORIES, EMOTIONS } from "@/lib/types";
 
 interface Props {
@@ -48,7 +49,7 @@ export function MemoryForm({ userId, onSaved }: Props) {
     try {
       const res = await fetch("/api/claude/extract", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({ rawInput: rawInput.trim() }),
       });
       const data = await res.json();
@@ -102,7 +103,7 @@ export function MemoryForm({ userId, onSaved }: Props) {
 
   return (
     <>
-      <Card className="bg-white/60 dark:bg-stone-900/60 backdrop-blur-sm">
+      <Card className="bg-card/75 backdrop-blur-sm">
         <CardContent className="p-3">
           <div className="flex gap-2">
             <div className="flex-1">

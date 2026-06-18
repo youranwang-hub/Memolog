@@ -36,3 +36,32 @@ CREATE POLICY "Users can update own memories" ON memories
 
 CREATE POLICY "Users can delete own memories" ON memories
   FOR DELETE USING (auth.uid() = user_id);
+
+-- 用户基础档案：用于让生成内容更像“这个人”，而不是只拼经历
+CREATE TABLE profiles (
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  display_name TEXT NOT NULL DEFAULT '',
+  real_name TEXT NOT NULL DEFAULT '',
+  identity_stage TEXT NOT NULL DEFAULT '',
+  school TEXT NOT NULL DEFAULT '',
+  major TEXT NOT NULL DEFAULT '',
+  grade TEXT NOT NULL DEFAULT '',
+  target_direction TEXT NOT NULL DEFAULT '',
+  contact_email TEXT NOT NULL DEFAULT '',
+  contact_phone TEXT NOT NULL DEFAULT '',
+  preferred_tone TEXT NOT NULL DEFAULT '自然、具体、不过度夸张',
+  extra_info TEXT NOT NULL DEFAULT ''
+);
+
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own profile" ON profiles
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own profile" ON profiles
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own profile" ON profiles
+  FOR UPDATE USING (auth.uid() = user_id);

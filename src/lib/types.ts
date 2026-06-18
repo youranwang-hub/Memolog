@@ -28,6 +28,25 @@ export interface ExtractedMemory {
   tags: string[];
 }
 
+export interface Profile {
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  display_name: string;
+  real_name: string;
+  identity_stage: string;
+  school: string;
+  major: string;
+  grade: string;
+  target_direction: string;
+  contact_email: string;
+  contact_phone: string;
+  preferred_tone: string;
+  extra_info: string;
+}
+
+export type ProfileInput = Omit<Profile, "created_at" | "updated_at">;
+
 export const CATEGORIES: Category[] = ["竞赛", "项目", "实习", "课程", "生活", "技能", "其他"];
 
 export const EMOTIONS: { value: Emotion; label: string; emoji: string }[] = [
