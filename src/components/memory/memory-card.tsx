@@ -7,6 +7,7 @@ import type { Memory } from "@/lib/types";
 import { EMOTION_MAP, CATEGORIES } from "@/lib/types";
 import { Calendar, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatEventDate } from "@/lib/dates";
 
 interface Props {
   memory: Memory;
@@ -34,7 +35,7 @@ export function MemoryCard({ memory }: Props) {
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Calendar className="h-3 w-3" />
-              <span>{memory.event_date}</span>
+              <span>{formatEventDate(memory.event_date)}</span>
             </div>
             <span className="text-lg" title={emotionInfo?.label}>
               {emotionInfo?.emoji ?? "😐"}

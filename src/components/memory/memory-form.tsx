@@ -22,13 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Loader2, Check } from "lucide-react";
+import { Plus, Loader2, Check, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { createMemory } from "@/lib/memories";
 import { getAuthHeaders } from "@/lib/api-client";
-import { normalizeEventDate } from "@/lib/dates";
+import { normalizeEventDate, formatEventDate } from "@/lib/dates";
 import type { ExtractedMemory } from "@/lib/types";
 import { CATEGORIES, EMOTIONS } from "@/lib/types";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface Props {
   userId: string;
@@ -151,19 +152,14 @@ export function MemoryForm({ userId, onSaved }: Props) {
             </DialogDescription>
           </DialogHeader>
 
-          {extracted && !saved && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">日期</Label>
-                  <Input
-                    value={extracted.event_date}
-                    onChange={(e) => updateField("event_date", e.target.value)}
-                    placeholder="2026-06"
-                    className="h-8 text-sm"
-                  />
-                </div>
-                <div className="space-y-1.5">
+              {extracted && !saved && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <DatePicker
+                      value={extracted.event_date}
+                      onChange={(val) => updateField("event_date", val)}
+                    />
+                    <div className="space-y-1.5">
                   <Label className="text-xs">分类</Label>
                   <Select
                     value={extracted.category}

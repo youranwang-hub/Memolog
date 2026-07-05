@@ -28,7 +28,8 @@ import { toast } from "sonner";
 import type { Memory, Category, Emotion } from "@/lib/types";
 import { CATEGORIES, EMOTIONS, EMOTION_MAP } from "@/lib/types";
 import { getMemory, updateMemory, deleteMemory } from "@/lib/memories";
-import { normalizeEventDate } from "@/lib/dates";
+import { normalizeEventDate, formatEventDate, eventDateToMonth } from "@/lib/dates";
+import { DatePicker } from "@/components/ui/date-picker";
 
 export default function MemoryDetailPage({
   params,
@@ -145,7 +146,9 @@ export default function MemoryDetailPage({
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">{memory.event_date}</span>
+              <span className="text-sm text-muted-foreground">
+                {formatEventDate(memory.event_date)}
+              </span>
               <span className="text-2xl">{emotionInfo?.emoji}</span>
             </div>
             <CardTitle className="text-xl mt-1">{memory.title}</CardTitle>
@@ -194,16 +197,12 @@ export default function MemoryDetailPage({
       ) : (
         <Card>
           <CardContent className="p-4 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">日期</Label>
-                <Input
+              <div className="grid grid-cols-2 gap-3">
+                <DatePicker
                   value={form.event_date}
-                  onChange={(e) => setForm({ ...form, event_date: e.target.value })}
-                  className="h-9"
+                  onChange={(val) => setForm({ ...form, event_date: val })}
                 />
-              </div>
-              <div className="space-y-1.5">
+                <div className="space-y-1.5">
                 <Label className="text-xs">分类</Label>
                 <Select
                   value={form.category}

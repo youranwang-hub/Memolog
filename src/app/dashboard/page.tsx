@@ -20,15 +20,13 @@ import type { Memory } from "@/lib/types";
 import { CATEGORIES } from "@/lib/types";
 import { fetchMemories } from "@/lib/memories";
 import { fetchProfile } from "@/lib/profile";
-import { normalizeEventDate } from "@/lib/dates";
 
 type TimeFilter = "all" | "unknown" | `month:${string}` | `year:${string}`;
 
 function parseEventDate(value: string) {
   if (!value || value === "未知") return null;
-  const normalized = normalizeEventDate(value, "");
-  if (!normalized) return null;
-  const match = normalized.match(/^(\d{4})-(\d{2})$/);
+  // yyyy-MM-dd 或 yyyy-MM 都支持
+  const match = value.match(/^(\d{4})-(\d{2})/);
   if (!match) return null;
 
   const year = Number(match[1]);

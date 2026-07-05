@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, requireUser } from "@/lib/api-auth";
 import { chat } from "@/lib/deepseek";
+import { eventDateToMonth } from "@/lib/dates";
 
 const MAX_FIELD_LENGTH = 5000;
 
@@ -31,6 +32,12 @@ export async function POST(request: Request) {
 
     if (memoriesError) throw memoriesError;
 
+    // 简历生成时只传 yyyy-MM，不暴露具体日期
+    const sanitizedMemories = (memories ?? []).map((m) => ({
+      ...m,
+      event_date: eventDateToMonth(m.event_date) || m.event_date,
+    }));
+
     const { data: storedProfile } = await supabase
       .from("profiles")
       .select(
@@ -55,8 +62,8 @@ export async function POST(request: Request) {
       userPrompt = `用户基础档案：
 ${JSON.stringify(profile ?? {}, null, 2)}
 
-用户的所有经历：
-${JSON.stringify(memories, null, 2)}
+用户的所有经历（日期格式为 YYYY-MM）：
+${JSON.stringify(sanitizedMemories, null, 2)}
 
 目标岗位：${safePosition || "通用"}
 岗位JD：${safeJd || "无"}
@@ -69,8 +76,8 @@ ${JSON.stringify(memories, null, 2)}
       userPrompt = `用户基础档案：
 ${JSON.stringify(profile ?? {}, null, 2)}
 
-用户的所有经历：
-${JSON.stringify(memories, null, 2)}
+用户的所有经历（日期格式为 YYYY-MM）：
+${JSON.stringify(sanitizedMemories, null, 2)}
 
 场景：${safeScene || "面试"}
 
@@ -81,8 +88,8 @@ ${JSON.stringify(memories, null, 2)}
       userPrompt = `用户基础档案：
 ${JSON.stringify(profile ?? {}, null, 2)}
 
-用户的所有经历：
-${JSON.stringify(memories, null, 2)}
+用户的所有经历（日期格式为 YYYY-MM）：
+${JSON.stringify(sanitizedMemories, null, 2)}
 
 用户的需求：${safePosition || ""}
 ${safeJd ? `补充信息：${safeJd}` : ""}`;

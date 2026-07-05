@@ -6,7 +6,7 @@ import { AuthProvider } from "@/components/auth/auth-provider";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isPublicPage = pathname === "/" || pathname.startsWith("/auth/");
+  const isPublicPage = pathname === "/" || pathname === "/reset-password" || pathname.startsWith("/auth/");
 
   if (isPublicPage) {
     return <AuthProvider>{children}</AuthProvider>;

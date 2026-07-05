@@ -13,10 +13,11 @@ export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const { user, loading: authLoading, signIn, signUp } = useAuth();
+  const { user, loading: authLoading, signIn, signUp, sendPasswordResetEmail } = useAuth();
 
-  // Already signed in → redirect to dashboard
+  // Already signed in -> redirect to dashboard
   useEffect(() => {
     if (!authLoading && user) {
       window.location.href = "/dashboard";
@@ -46,6 +47,26 @@ export default function AuthPage() {
       }
     }
     setLoading(false);
+  }
+
+  async function handleForgotPassword() {
+    setErrorMsg("");
+
+    if (!email) {
+      setErrorMsg("请先输入邮箱");
+      return;
+    }
+
+    setResetLoading(true);
+    const { error } = await sendPasswordResetEmail(email);
+    setResetLoading(false);
+
+    if (error) {
+      setErrorMsg(error);
+      return;
+    }
+
+    toast.success("验证邮件已发送，请前往邮箱继续修改密码", { duration: 10000 });
   }
 
   // Show loading while checking auth state
@@ -81,7 +102,19 @@ export default function AuthPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">密码</Label>
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="password">密码</Label>
+                {isLogin && (
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+                    onClick={handleForgotPassword}
+                    disabled={resetLoading || loading}
+                  >
+                    {resetLoading ? "发送中..." : "忘记密码？"}
+                  </button>
+                )}
+              </div>
               <Input
                 id="password"
                 type="password"
@@ -99,7 +132,7 @@ export default function AuthPage() {
               </p>
             )}
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || resetLoading}>
               {loading ? "处理中..." : isLogin ? "登录" : "注册"}
             </Button>
           </form>

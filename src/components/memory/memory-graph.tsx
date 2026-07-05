@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Category, Memory } from "@/lib/types";
 import { CATEGORIES, EMOTION_MAP } from "@/lib/types";
 import { ExternalLink, RotateCcw } from "lucide-react";
+import { formatEventDate } from "@/lib/dates";
 
 type NodeKind = "root" | "category" | "memory" | "tag";
 
@@ -334,7 +335,7 @@ export function MemoryGraph({ memories }: Props) {
     if (node.type === "root") return `${node.count} 条记忆正在生长`;
     if (node.type === "category") return `${node.count} 条 ${node.label} 记忆`;
     if (node.type === "tag") return `${node.count} 次出现，连接到相关经历或分类`;
-    return node.memory.result || node.memory.content || node.memory.event_date;
+    return node.memory.result || node.memory.content || formatEventDate(node.memory.event_date);
   }
 
   function kindLabel(kind: NodeKind) {
