@@ -28,8 +28,10 @@ import { toast } from "sonner";
 import type { Memory, Category, Emotion } from "@/lib/types";
 import { CATEGORIES, EMOTIONS, EMOTION_MAP } from "@/lib/types";
 import { getMemory, updateMemory, deleteMemory } from "@/lib/memories";
-import { normalizeEventDate, formatEventDate, eventDateToMonth } from "@/lib/dates";
+import { normalizeEventDate, formatEventDate, formatEventDateRange, eventDateToMonth } from "@/lib/dates";
 import { DatePicker } from "@/components/ui/date-picker";
+
+type DateMode = "single" | "range";
 
 export default function MemoryDetailPage({
   params,
@@ -43,9 +45,11 @@ export default function MemoryDetailPage({
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [dateMode, setDateMode] = useState<DateMode>("single");
 
   const [form, setForm] = useState({
     event_date: "",
+    event_date_end: "" as string,
     category: "其他" as Category,
     title: "",
     result: "",
@@ -60,8 +64,11 @@ export default function MemoryDetailPage({
     getMemory(id)
       .then((data) => {
         setMemory(data);
+        const hasRange = !!data.event_date_end;
+        setDateMode(hasRange ? "range" : "single");
         setForm({
           event_date: data.event_date,
+          event_date_end: data.event_date_end ?? "",
           category: data.category,
           title: data.title,
           result: data.result,
@@ -81,6 +88,10 @@ export default function MemoryDetailPage({
       const updated = await updateMemory(id, {
         ...form,
         event_date: normalizeEventDate(form.event_date),
+        event_date_end:
+          dateMode === "range" && form.event_date_end
+            ? normalizeEventDate(form.event_date_end)
+            : null,
       });
       setMemory(updated);
       setEditing(false);
@@ -147,7 +158,7 @@ export default function MemoryDetailPage({
           <CardHeader>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">
-                {formatEventDate(memory.event_date)}
+                {formatEventDateRange(memory.event_date, memory.event_date_end)}
               </span>
               <span className="text-2xl">{emotionInfo?.emoji}</span>
             </div>
@@ -197,11 +208,52 @@ export default function MemoryDetailPage({
       ) : (
         <Card>
           <CardContent className="p-4 space-y-4">
+              {/* 日期模式切换 + 日期选择 */}
+              <div className="space-y-2">
+                <Label className="text-xs">日期</Label>
+                <div className="flex gap-1.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={dateMode === "single" ? "default" : "outline"}
+                    onClick={() => setDateMode("single")}
+                    className="text-xs h-7"
+                  >
+                    单日
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={dateMode === "range" ? "default" : "outline"}
+                    onClick={() => setDateMode("range")}
+                    className="text-xs h-7"
+                  >
+                    阶段
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <DatePicker
+                    value={form.event_date}
+                    onChange={(val) => setForm({ ...form, event_date: val })}
+                  />
+                  {dateMode === "range" && (
+                    <DatePicker
+                      value={form.event_date_end}
+                      onChange={(val) => setForm({ ...form, event_date_end: val })}
+                      label="结束日期"
+                      minDate={form.event_date || undefined}
+                    />
+                  )}
+                </div>
+                {dateMode === "range" && form.event_date_end && (
+                  <p className="text-xs text-muted-foreground">
+                    阶段：{formatEventDateRange(form.event_date, form.event_date_end)}
+                  </p>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
-                <DatePicker
-                  value={form.event_date}
-                  onChange={(val) => setForm({ ...form, event_date: val })}
-                />
                 <div className="space-y-1.5">
                 <Label className="text-xs">分类</Label>
                 <Select

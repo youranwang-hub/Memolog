@@ -5,6 +5,7 @@ CREATE TABLE memories (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   event_date TEXT NOT NULL DEFAULT '未知',
+  event_date_end TEXT,
   category TEXT NOT NULL DEFAULT '其他',
   title TEXT NOT NULL DEFAULT '',
   result TEXT NOT NULL DEFAULT '',
@@ -65,3 +66,29 @@ CREATE POLICY "Users can insert own profile" ON profiles
 
 CREATE POLICY "Users can update own profile" ON profiles
   FOR UPDATE USING (auth.uid() = user_id);
+
+-- 生成历史：记录每次 AI 生成的内容，方便用户回溯
+CREATE TABLE generated_histories (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  type TEXT NOT NULL DEFAULT 'custom',
+  title TEXT NOT NULL DEFAULT '',
+  prompt_summary TEXT NOT NULL DEFAULT '',
+  content TEXT NOT NULL DEFAULT '',
+  inputs JSONB NOT NULL DEFAULT '{}'
+);
+
+CREATE INDEX idx_generated_histories_user_id ON generated_histories(user_id);
+CREATE INDEX idx_generated_histories_created_at ON generated_histories(created_at DESC);
+
+ALTER TABLE generated_histories ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own histories" ON generated_histories
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own histories" ON generated_histories
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own histories" ON generated_histories
+  FOR DELETE USING (auth.uid() = user_id);

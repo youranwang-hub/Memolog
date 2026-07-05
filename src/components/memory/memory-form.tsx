@@ -22,11 +22,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Loader2, Check, CalendarIcon } from "lucide-react";
+import { Plus, Loader2, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { createMemory } from "@/lib/memories";
 import { getAuthHeaders } from "@/lib/api-client";
-import { normalizeEventDate, formatEventDate } from "@/lib/dates";
+import { normalizeEventDate, formatEventDate, formatEventDateRange } from "@/lib/dates";
 import type { ExtractedMemory } from "@/lib/types";
 import { CATEGORIES, EMOTIONS } from "@/lib/types";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -36,6 +36,8 @@ interface Props {
   onSaved: () => void;
 }
 
+type DateMode = "single" | "range";
+
 export function MemoryForm({ userId, onSaved }: Props) {
   const [rawInput, setRawInput] = useState("");
   const [extracting, setExtracting] = useState(false);
@@ -43,6 +45,7 @@ export function MemoryForm({ userId, onSaved }: Props) {
   const [showEditor, setShowEditor] = useState(false);
   const [extracted, setExtracted] = useState<ExtractedMemory | null>(null);
   const [saved, setSaved] = useState(false);
+  const [dateMode, setDateMode] = useState<DateMode>("single");
 
   async function handleExtract() {
     if (!rawInput.trim()) return;
@@ -62,6 +65,8 @@ export function MemoryForm({ userId, onSaved }: Props) {
       }
 
       setExtracted(data.extracted);
+      // 根据 AI 返回是否有 event_date_end 判断日期模式
+      setDateMode(data.extracted.event_date_end ? "range" : "single");
       setShowEditor(true);
     } catch {
       toast.error("提炼失败，请稍后重试");
@@ -84,6 +89,10 @@ export function MemoryForm({ userId, onSaved }: Props) {
         user_id: userId,
         ...extracted,
         event_date: normalizeEventDate(extracted.event_date),
+        event_date_end:
+          dateMode === "range" && extracted.event_date_end
+            ? normalizeEventDate(extracted.event_date_end)
+            : null,
         raw_input: rawInput.trim(),
       });
 
@@ -94,6 +103,7 @@ export function MemoryForm({ userId, onSaved }: Props) {
         setExtracted(null);
         setShowEditor(false);
         setSaved(false);
+        setDateMode("single");
         onSaved();
       }, 1000);
     } catch (err) {
@@ -141,7 +151,14 @@ export function MemoryForm({ userId, onSaved }: Props) {
         </CardContent>
       </Card>
 
-      <Dialog open={showEditor} onOpenChange={setShowEditor}>
+      <Dialog open={showEditor} onOpenChange={(open) => {
+        setShowEditor(open);
+        if (!open) {
+          setExtracted(null);
+          setSaved(false);
+          setDateMode("single");
+        }
+      }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{saved ? "已记录" : "AI 帮你整理好了"}</DialogTitle>
@@ -152,13 +169,54 @@ export function MemoryForm({ userId, onSaved }: Props) {
             </DialogDescription>
           </DialogHeader>
 
-              {extracted && !saved && (
-                <div className="space-y-4">
+            {extracted && !saved && (
+              <div className="space-y-4">
+                  {/* 日期模式切换 + 日期选择 */}
+                  <div className="space-y-2">
+                    <Label className="text-xs">日期</Label>
+                    <div className="flex gap-1.5">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={dateMode === "single" ? "default" : "outline"}
+                        onClick={() => setDateMode("single")}
+                        className="text-xs h-7"
+                      >
+                        单日
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={dateMode === "range" ? "default" : "outline"}
+                        onClick={() => setDateMode("range")}
+                        className="text-xs h-7"
+                      >
+                        阶段
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <DatePicker
+                        value={extracted.event_date}
+                        onChange={(val) => updateField("event_date", val)}
+                      />
+                      {dateMode === "range" && (
+                        <DatePicker
+                          value={extracted.event_date_end ?? ""}
+                          onChange={(val) => updateField("event_date_end", val)}
+                          label="结束日期"
+                          minDate={extracted.event_date || undefined}
+                        />
+                      )}
+                    </div>
+                    {dateMode === "range" && extracted.event_date_end && (
+                      <p className="text-xs text-muted-foreground">
+                        阶段：{formatEventDateRange(extracted.event_date, extracted.event_date_end)}
+                      </p>
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-2 gap-3">
-                    <DatePicker
-                      value={extracted.event_date}
-                      onChange={(val) => updateField("event_date", val)}
-                    />
                     <div className="space-y-1.5">
                   <Label className="text-xs">分类</Label>
                   <Select
@@ -251,6 +309,7 @@ export function MemoryForm({ userId, onSaved }: Props) {
               onClick={() => {
                 setShowEditor(false);
                 setSaved(false);
+                setDateMode("single");
               }}
             >
               取消

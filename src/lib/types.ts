@@ -9,6 +9,7 @@ export interface Memory {
   user_id: string;
   created_at: string;
   event_date: string;
+  event_date_end?: string | null;
   category: Category;
   title: string;
   result: string;
@@ -21,6 +22,7 @@ export interface Memory {
 
 export interface ExtractedMemory {
   event_date: string;
+  event_date_end?: string | null;
   category: Category;
   title: string;
   result: string;

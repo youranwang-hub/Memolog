@@ -7,6 +7,7 @@ const SYSTEM_PROMPT = `你是一个信息结构化助手。用户输入了一条
 
 规则：
 - event_date：尽量输出 YYYY-MM-DD（如 2026-06-18）。如果用户只给了月份（如"2026年6月"），则输出 YYYY-MM。不要编造具体日期
+- event_date_end：如果用户描述的是一个阶段（如"2026年6月到8月"、"持续三周"、"暑假实习"），请输出阶段结束日期 YYYY-MM-DD 或 YYYY-MM；如果描述的是单日经历则为 null
 - category：只能是 竞赛/项目/实习/课程/生活/技能/其他
 - title：简短的标题（10字以内）
 - result：成果总结（如果有），否则为 ""
@@ -48,6 +49,11 @@ export async function POST(request: Request) {
 
     const extracted = JSON.parse(jsonMatch[0]);
     extracted.event_date = normalizeEventDate(extracted.event_date);
+    if (extracted.event_date_end) {
+      extracted.event_date_end = normalizeEventDate(extracted.event_date_end);
+    } else {
+      extracted.event_date_end = null;
+    }
     return NextResponse.json({ extracted });
   } catch (error) {
     console.error("Extract error:", error);

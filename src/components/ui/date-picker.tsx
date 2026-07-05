@@ -26,16 +26,21 @@ function formatDisplay(val: string): string {
  * 日期选择器。
  * - 点击整个输入框任意位置弹出原生日历
  * - 选中后在输入框显示 yyyy/MM/dd
- * - 不允许选择今天之后的日期
+ * - maxDate：不允许选择此日期之后（默认今天）
+ * - minDate：不允许选择此日期之前
  */
 export function DatePicker({
   value,
   onChange,
   label = "日期",
+  maxDate,
+  minDate,
 }: {
   value: string;
   onChange: (val: string) => void;
   label?: string;
+  maxDate?: string;
+  minDate?: string;
 }) {
   const dateRef = useRef<HTMLInputElement>(null);
   const [pickerValue, setPickerValue] = useState<string>(
@@ -62,12 +67,13 @@ export function DatePicker({
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value; // yyyy-MM-dd
-      // 额外防御：如果浏览器没有遵守 max 属性
-      if (val > TODAY) return;
+      // 额外防御：浏览器可能没有遵守 max / min 属性
+      if (maxDate && val > maxDate) return;
+      if (minDate && val < minDate) return;
       setPickerValue(val);
       onChange(val);
     },
-    [onChange],
+    [onChange, maxDate, minDate],
   );
 
   /** 清空 */
@@ -106,7 +112,8 @@ export function DatePicker({
             ref={dateRef}
             type="date"
             value={pickerValue}
-            max={TODAY}
+            min={minDate || undefined}
+            max={maxDate || TODAY}
             onChange={handleChange}
             className="absolute inset-0 w-full cursor-pointer opacity-0"
             tabIndex={-1}

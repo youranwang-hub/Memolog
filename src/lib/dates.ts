@@ -76,3 +76,14 @@ export function formatEventDate(eventDate: string): string {
   }
   return eventDate;
 }
+
+/** 将 event_date 范围格式化为展示用字符串（支持单日或阶段） */
+export function formatEventDateRange(
+  eventDate: string,
+  eventDateEnd?: string | null,
+): string {
+  const start = formatEventDate(eventDate);
+  if (!eventDateEnd) return start;
+  const end = formatEventDate(eventDateEnd);
+  return `${start} → ${end}`;
+}
