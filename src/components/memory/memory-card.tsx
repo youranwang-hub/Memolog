@@ -4,10 +4,10 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Memory } from "@/lib/types";
-import { EMOTION_MAP, CATEGORIES } from "@/lib/types";
+import { EMOTION_MAP } from "@/lib/types";
 import { Calendar, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatEventDate, formatEventDateRange } from "@/lib/dates";
+import { formatEventDateRange } from "@/lib/dates";
 
 interface Props {
   memory: Memory;
@@ -17,7 +17,7 @@ interface Props {
 export function MemoryCard({ memory }: Props) {
   const emotionInfo = EMOTION_MAP[memory.emotion];
 
-  const categoryIndex = CATEGORIES.indexOf(memory.category) % 7;
+  const categoryIndex = Array.from(memory.category).reduce((sum, char) => sum + char.charCodeAt(0), 0) % 7;
   const categoryColors = [
     "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800",
     "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800",

@@ -26,10 +26,13 @@ import {
 import { ArrowLeft, Trash2, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Memory, Category, Emotion } from "@/lib/types";
-import { CATEGORIES, EMOTIONS, EMOTION_MAP } from "@/lib/types";
+import { EMOTIONS, EMOTION_MAP } from "@/lib/types";
 import { getMemory, updateMemory, deleteMemory } from "@/lib/memories";
-import { normalizeEventDate, formatEventDate, formatEventDateRange, eventDateToMonth } from "@/lib/dates";
+import { normalizeEventDate, formatEventDateRange } from "@/lib/dates";
 import { DatePicker } from "@/components/ui/date-picker";
+import { useAuth } from "@/components/auth/auth-provider";
+import { fetchProfile } from "@/lib/profile";
+import { getCategories } from "@/lib/types";
 
 type DateMode = "single" | "range";
 
@@ -39,6 +42,7 @@ export default function MemoryDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { user } = useAuth();
   const router = useRouter();
   const [memory, setMemory] = useState<Memory | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,6 +50,7 @@ export default function MemoryDetailPage({
   const [editing, setEditing] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [dateMode, setDateMode] = useState<DateMode>("single");
+  const [categories, setCategories] = useState<string[]>(getCategories());
 
   const [form, setForm] = useState({
     event_date: "",
@@ -81,6 +86,13 @@ export default function MemoryDetailPage({
       })
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchProfile(user.id)
+      .then((profile) => setCategories(getCategories(profile?.custom_categories)))
+      .catch(() => undefined);
+  }, [user]);
 
   async function handleSave() {
     setSaving(true);
@@ -264,7 +276,7 @@ export default function MemoryDetailPage({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map((c) => (
+                    {getCategories([...categories, form.category]).map((c) => (
                       <SelectItem key={c} value={c}>
                         {c}
                       </SelectItem>

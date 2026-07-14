@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import type { ProfileInput } from "@/lib/types";
 import { createEmptyProfile, fetchProfile, saveProfile } from "@/lib/profile";
@@ -16,6 +18,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileInput | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [newCategory, setNewCategory] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -47,6 +50,26 @@ export default function ProfilePage() {
   function updateField(field: keyof ProfileInput, value: string) {
     if (!profile) return;
     setProfile({ ...profile, [field]: value });
+  }
+
+  function addCategory() {
+    if (!profile) return;
+    const value = newCategory.trim();
+    if (!value) return;
+    if (profile.custom_categories.includes(value)) {
+      toast.error("这个自定义分类已经存在了");
+      return;
+    }
+    setProfile({ ...profile, custom_categories: [...profile.custom_categories, value] });
+    setNewCategory("");
+  }
+
+  function removeCategory(category: string) {
+    if (!profile) return;
+    setProfile({
+      ...profile,
+      custom_categories: profile.custom_categories.filter((item) => item !== category),
+    });
   }
 
   async function handleSave() {
@@ -101,6 +124,52 @@ export default function ProfilePage() {
               placeholder="可留空，需要时再填"
             />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">自定义分类</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            这里的分类会用于记录、编辑和筛选。可以自由添加或删除；删除不会影响已有记忆的内容。
+          </p>
+          <div className="flex gap-2">
+            <Input
+              value={newCategory}
+              onChange={(event) => setNewCategory(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  addCategory();
+                }
+              }}
+              placeholder="例如：社团、志愿服务、阅读"
+              maxLength={20}
+            />
+            <Button type="button" variant="outline" onClick={addCategory}>
+              <Plus className="h-4 w-4 mr-1" />
+              添加
+            </Button>
+          </div>
+          {profile.custom_categories.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {profile.custom_categories.map((category) => (
+                <Badge key={category} variant="secondary" className="gap-1 py-1 pl-2">
+                  {category}
+                  <button
+                    type="button"
+                    onClick={() => removeCategory(category)}
+                    className="rounded-sm hover:text-destructive"
+                    aria-label={`删除分类 ${category}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

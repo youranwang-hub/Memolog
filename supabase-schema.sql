@@ -53,7 +53,8 @@ CREATE TABLE profiles (
   contact_email TEXT NOT NULL DEFAULT '',
   contact_phone TEXT NOT NULL DEFAULT '',
   preferred_tone TEXT NOT NULL DEFAULT '自然、具体、不过度夸张',
-  extra_info TEXT NOT NULL DEFAULT ''
+  extra_info TEXT NOT NULL DEFAULT '',
+  custom_categories TEXT[] NOT NULL DEFAULT '{}'
 );
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;

@@ -22,23 +22,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Loader2, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { createMemory } from "@/lib/memories";
 import { getAuthHeaders } from "@/lib/api-client";
-import { normalizeEventDate, formatEventDate, formatEventDateRange } from "@/lib/dates";
+import { normalizeEventDate, formatEventDateRange } from "@/lib/dates";
 import type { ExtractedMemory } from "@/lib/types";
-import { CATEGORIES, EMOTIONS } from "@/lib/types";
+import { getCategories, EMOTIONS } from "@/lib/types";
 import { DatePicker } from "@/components/ui/date-picker";
 
 interface Props {
   userId: string;
+  categories: string[];
   onSaved: () => void;
 }
 
 type DateMode = "single" | "range";
 
-export function MemoryForm({ userId, onSaved }: Props) {
+export function MemoryForm({ userId, categories, onSaved }: Props) {
   const [rawInput, setRawInput] = useState("");
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -227,7 +228,7 @@ export function MemoryForm({ userId, onSaved }: Props) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {CATEGORIES.map((c) => (
+                      {getCategories([...categories, extracted.category]).map((c) => (
                         <SelectItem key={c} value={c}>
                           {c}
                         </SelectItem>

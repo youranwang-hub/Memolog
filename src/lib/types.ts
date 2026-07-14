@@ -1,6 +1,6 @@
 export type Emotion = "proud" | "excited" | "relieved" | "neutral" | "tired" | "frustrated" | "sad";
 
-export type Category = "竞赛" | "项目" | "实习" | "课程" | "生活" | "技能" | "其他";
+export type Category = string;
 
 export type GenerateType = "resume" | "intro" | "custom";
 
@@ -47,6 +47,7 @@ export interface Profile {
   contact_phone: string;
   preferred_tone: string;
   extra_info: string;
+  custom_categories: string[];
 }
 
 export type ProfileInput = Omit<Profile, "created_at" | "updated_at">;
@@ -64,7 +65,13 @@ export interface GeneratedHistory {
 
 export type GeneratedHistoryInput = Omit<GeneratedHistory, "id" | "created_at">;
 
-export const CATEGORIES: Category[] = ["竞赛", "项目", "实习", "课程", "生活", "技能", "其他"];
+export const DEFAULT_CATEGORIES = ["竞赛", "项目", "实习", "课程", "生活", "技能", "其他"] as const;
+
+export function getCategories(categories?: string[]) {
+  return Array.from(
+    new Set((categories ?? DEFAULT_CATEGORIES).map((category) => category.trim()).filter(Boolean))
+  );
+}
 
 export const EMOTIONS: { value: Emotion; label: string; emoji: string }[] = [
   { value: "proud", label: "自豪", emoji: "😤" },

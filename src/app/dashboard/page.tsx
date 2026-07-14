@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { GitFork, Grid2X2, Search, Filter, X } from "lucide-react";
 import type { Memory } from "@/lib/types";
-import { CATEGORIES } from "@/lib/types";
+import { getCategories } from "@/lib/types";
 import { fetchMemories } from "@/lib/memories";
 import { fetchProfile } from "@/lib/profile";
 
@@ -79,6 +79,7 @@ export default function DashboardPage() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
   const [view, setView] = useState<"grid" | "graph">("grid");
   const [showProfileNudge, setShowProfileNudge] = useState(false);
+  const [categories, setCategories] = useState<string[]>(getCategories());
 
   const loadMemories = useCallback(async () => {
     if (!user) return;
@@ -139,7 +140,10 @@ export default function DashboardPage() {
           !!profile?.identity_stage ||
           !!profile?.school ||
           !!profile?.major;
-        if (active) setShowProfileNudge(!hasProfile);
+        if (active) {
+          setShowProfileNudge(!hasProfile);
+          setCategories(getCategories(profile?.custom_categories));
+        }
       } catch {
         if (active) setShowProfileNudge(false);
       }
@@ -184,7 +188,7 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-      <MemoryForm userId={user.id} onSaved={loadMemories} />
+      <MemoryForm userId={user.id} categories={categories} onSaved={loadMemories} />
 
       {showProfileNudge && (
         <div className="rounded-md border bg-card/75 p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -220,7 +224,7 @@ export default function DashboardPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">全部分类</SelectItem>
-            {CATEGORIES.map((c) => (
+            {categories.map((c) => (
               <SelectItem key={c} value={c}>
                 {c}
               </SelectItem>

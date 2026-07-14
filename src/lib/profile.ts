@@ -1,5 +1,5 @@
 import { getSupabase } from "@/lib/supabase";
-import type { Profile, ProfileInput } from "@/lib/types";
+import { DEFAULT_CATEGORIES, type Profile, type ProfileInput } from "@/lib/types";
 
 export function createEmptyProfile(userId: string, email?: string): ProfileInput {
   return {
@@ -15,6 +15,7 @@ export function createEmptyProfile(userId: string, email?: string): ProfileInput
     contact_phone: "",
     preferred_tone: "自然、具体、不过度夸张",
     extra_info: "",
+    custom_categories: [...DEFAULT_CATEGORIES],
   };
 }
 
@@ -38,6 +39,17 @@ function normalizeStoredProfile(value: unknown, userId: string, email?: string):
   });
 }
 
+function normalizeProfile(profile: Profile | ProfileInput, userId: string, email?: string): Profile {
+  return toProfile({
+    ...createEmptyProfile(userId, email),
+    ...profile,
+    user_id: userId,
+    custom_categories: Array.isArray(profile.custom_categories)
+      ? profile.custom_categories
+      : [...DEFAULT_CATEGORIES],
+  });
+}
+
 export async function fetchProfile(userId: string) {
   const supabase = getSupabase();
   const { data, error } = await supabase
@@ -50,13 +62,23 @@ export async function fetchProfile(userId: string) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!error && data) return data as Profile;
-
   const metadataProfile = normalizeStoredProfile(
     user?.user_metadata?.memolog_profile,
     userId,
     user?.email
   );
+
+  if (!error && data) {
+    const storedProfile = data as Profile;
+    if (Array.isArray(storedProfile.custom_categories) || !metadataProfile) {
+      return normalizeProfile(storedProfile, userId, user?.email);
+    }
+    return normalizeProfile(
+      { ...storedProfile, custom_categories: metadataProfile.custom_categories },
+      userId,
+      user?.email
+    );
+  }
 
   if (!metadataProfile) return null;
 

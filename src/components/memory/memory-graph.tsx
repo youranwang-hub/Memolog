@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Category, Memory } from "@/lib/types";
-import { CATEGORIES, EMOTION_MAP } from "@/lib/types";
+import { EMOTION_MAP } from "@/lib/types";
 import { ExternalLink, RotateCcw } from "lucide-react";
 import { formatEventDate } from "@/lib/dates";
 
@@ -50,7 +50,7 @@ const CATEGORY_COLORS = [
 ];
 
 function getCategoryColor(category: Category) {
-  const index = Math.max(0, CATEGORIES.indexOf(category));
+  const index = Array.from(category).reduce((sum, char) => sum + char.charCodeAt(0), 0);
   return CATEGORY_COLORS[index % CATEGORY_COLORS.length];
 }
 
@@ -93,7 +93,7 @@ export function MemoryGraph({ memories }: Props) {
       memory.tags.forEach((tag) => tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1));
     });
 
-    const activeCategories = CATEGORIES.filter((category) => categoryCounts.has(category));
+    const activeCategories = Array.from(categoryCounts.keys()).sort((a, b) => a.localeCompare(b, "zh-CN"));
     const nodes: GraphNode[] = [
       {
         id: "root",
