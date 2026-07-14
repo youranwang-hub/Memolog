@@ -1,34 +1,37 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon, XIcon } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { CalendarDays, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { formatEventDate } from "@/lib/dates";
 
-const TODAY = (() => {
-  const d = new Date();
-  const y = d.getFullYear();
-  const mo = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${mo}-${day}`;
-})();
+const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
 
-/** 把 yyyy-MM-dd 格式化为 yyyy/MM/dd */
-function formatDisplay(val: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(val)) return "";
-  const [y, mo, d] = val.split("-");
-  return `${y}/${Number(mo)}/${Number(d)}`;
+function toDate(value?: string) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
 }
 
-/**
- * 日期选择器。
- * - 点击整个输入框任意位置弹出原生日历
- * - 选中后在输入框显示 yyyy/MM/dd
- * - maxDate：不允许选择此日期之后（默认今天）
- * - minDate：不允许选择此日期之前
- */
+function toValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function todayValue() {
+  return toValue(new Date());
+}
+
+function monthFrom(value?: string) {
+  const date = toDate(value);
+  const now = new Date();
+  return new Date(date?.getFullYear() ?? now.getFullYear(), date?.getMonth() ?? now.getMonth(), 1);
+}
+
 export function DatePicker({
   value,
   onChange,
@@ -42,104 +45,217 @@ export function DatePicker({
   maxDate?: string;
   minDate?: string;
 }) {
-  const dateRef = useRef<HTMLInputElement>(null);
-  const [pickerValue, setPickerValue] = useState<string>(
-    value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "",
-  );
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [month, setMonth] = useState(() => monthFrom(value));
+  const selectedDate = toDate(value);
+  const latest = maxDate ?? todayValue();
 
-  // 外部 value 变化时同步
+  const days = useMemo(() => {
+    const firstDay = new Date(month.getFullYear(), month.getMonth(), 1);
+    const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+    return Array.from({ length: firstDay.getDay() + daysInMonth }, (_, index) => {
+      const day = index - firstDay.getDay() + 1;
+      return day > 0 ? new Date(month.getFullYear(), month.getMonth(), day) : null;
+    });
+  }, [month]);
+
   useEffect(() => {
-    if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      setPickerValue(value);
-    } else if (value && /^\d{4}-\d{2}$/.test(value)) {
-      setPickerValue("");
+    function handlePointerDown(event: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
     }
-  }, [value]);
-
-  const displayText = formatDisplay(pickerValue);
-
-  /** 弹出原生日历 */
-  const openPicker = useCallback(() => {
-    dateRef.current?.showPicker();
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
 
-  /** 日历选择变化 */
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const val = e.target.value; // yyyy-MM-dd
-      // 额外防御：浏览器可能没有遵守 max / min 属性
-      if (maxDate && val > maxDate) return;
-      if (minDate && val < minDate) return;
-      setPickerValue(val);
-      onChange(val);
-    },
-    [onChange, maxDate, minDate],
-  );
+  function isUnavailable(date: Date) {
+    const dateValue = toValue(date);
+    return dateValue > latest || (!!minDate && dateValue < minDate);
+  }
 
-  /** 清空 */
-  const handleClear = useCallback(() => {
-    setPickerValue("");
-    onChange("");
-    if (dateRef.current) dateRef.current.value = "";
-  }, [onChange]);
+  function openCalendar() {
+    setMonth(monthFrom(value));
+    setOpen(true);
+  }
 
-  const monthOnly =
-    value && /^\d{4}-\d{2}$/.test(value) && !pickerValue;
+  function selectDate(date: Date) {
+    if (isUnavailable(date)) return;
+    onChange(toValue(date));
+    setOpen(false);
+  }
+
+  function monthHasSelectableDay(candidate: Date) {
+    const start = new Date(candidate.getFullYear(), candidate.getMonth(), 1);
+    const end = new Date(candidate.getFullYear(), candidate.getMonth() + 1, 0);
+    return toValue(start) <= latest && (!minDate || toValue(end) >= minDate);
+  }
+
+  const monthLabel = new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "long" }).format(month);
+  const monthOnly = value && /^\d{4}-\d{2}$/.test(value);
+  const previousMonth = new Date(month.getFullYear(), month.getMonth() - 1, 1);
+  const nextMonth = new Date(month.getFullYear(), month.getMonth() + 1, 1);
+  const previousYear = new Date(month.getFullYear() - 1, month.getMonth(), 1);
+  const nextYear = new Date(month.getFullYear() + 1, month.getMonth(), 1);
+  const canGoBack = monthHasSelectableDay(previousMonth);
+  const canGoForward = monthHasSelectableDay(nextMonth);
+  const canGoPreviousYear = monthHasSelectableDay(previousYear);
+  const canGoNextYear = monthHasSelectableDay(nextYear);
 
   return (
-    <div className="space-y-1.5">
+    <div ref={rootRef} className="relative space-y-1.5">
       <Label className="text-xs">{label}</Label>
-
       <div className="flex items-center gap-2">
-        {/* 外层可点击区域，点击即弹日历 */}
-        <div
-          className="relative flex-1 cursor-pointer"
-          onClick={openPicker}
+        <button
+          type="button"
+          onClick={openCalendar}
+          className="flex h-8 min-w-0 flex-1 items-center justify-between rounded-md border bg-background px-2.5 text-left text-sm transition-colors hover:border-stone-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          aria-haspopup="dialog"
+          aria-expanded={open}
         >
-          {/* 展示用的 Input（readOnly，显示 yyyy/MM/dd） */}
-          <Input
-            value={displayText}
-            placeholder="YYYY/MM/DD"
-            readOnly
-            className="h-8 text-sm pr-7"
-          />
-
-          {/* 日历图标（装饰，也触发点击） */}
-          <CalendarIcon className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-
-          {/* 原生 date input：绝对定位铺满，透明度 0，负责弹日历 */}
-          <input
-            ref={dateRef}
-            type="date"
-            value={pickerValue}
-            min={minDate || undefined}
-            max={maxDate || TODAY}
-            onChange={handleChange}
-            className="absolute inset-0 w-full cursor-pointer opacity-0"
-            tabIndex={-1}
-          />
-        </div>
-
-        {pickerValue && (
+          <span className={cn("truncate", !selectedDate && "text-muted-foreground")}>
+            {selectedDate ? formatEventDate(value) : "选择日期"}
+          </span>
+          <CalendarDays className="ml-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        </button>
+        {selectedDate && (
           <Button
             type="button"
             variant="ghost"
             size="icon"
             className="h-7 w-7 shrink-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleClear();
-            }}
+            onClick={() => onChange("")}
+            aria-label="清除日期"
           >
-            <XIcon className="h-3.5 w-3.5" />
+            <X className="h-3.5 w-3.5" />
           </Button>
         )}
       </div>
 
+      {open && (
+        <div
+          role="dialog"
+          aria-label="选择日期"
+          className="absolute z-50 mt-2 w-[280px] rounded-xl border bg-card p-3 shadow-lg shadow-stone-900/10"
+        >
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-0.5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                disabled={!canGoPreviousYear}
+                onClick={() => setMonth(previousYear)}
+                aria-label="上一年"
+              >
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                disabled={!canGoBack}
+                onClick={() => setMonth(previousMonth)}
+                aria-label="上个月"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            </div>
+            <span className="text-sm font-medium">{monthLabel}</span>
+            <div className="flex items-center gap-0.5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                disabled={!canGoForward}
+                onClick={() => setMonth(nextMonth)}
+                aria-label="下个月"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                disabled={!canGoNextYear}
+                onClick={() => setMonth(nextYear)}
+                aria-label="下一年"
+              >
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-7 gap-1 text-center">
+            {WEEKDAYS.map((weekday) => (
+              <span key={weekday} className="h-7 leading-7 text-[11px] text-muted-foreground">
+                {weekday}
+              </span>
+            ))}
+            {days.map((date, index) => {
+              if (!date) return <span key={`empty-${index}`} className="h-8" />;
+              const dateValue = toValue(date);
+              const selected = selectedDate && toValue(selectedDate) === dateValue;
+              const today = dateValue === todayValue();
+              const unavailable = isUnavailable(date);
+              return (
+                <button
+                  key={dateValue}
+                  type="button"
+                  disabled={unavailable}
+                  onClick={() => selectDate(date)}
+                  className={cn(
+                    "mx-auto flex h-8 w-8 items-center justify-center rounded-lg text-xs transition-colors",
+                    selected && "bg-stone-900 font-medium text-white hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-900",
+                    !selected && today && "ring-1 ring-stone-400",
+                    !selected && !unavailable && "hover:bg-stone-100 dark:hover:bg-stone-800",
+                    unavailable && "cursor-not-allowed text-muted-foreground/35"
+                  )}
+                >
+                  {date.getDate()}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-3 flex items-center justify-between border-t pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                const today = new Date();
+                if (!isUnavailable(today)) selectDate(today);
+              }}
+              disabled={isUnavailable(new Date())}
+              className="text-xs text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              今天
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+              className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+            >
+              清除
+            </button>
+          </div>
+        </div>
+      )}
+
       {monthOnly && (
-        <p className="text-xs text-muted-foreground">
-          当前：{formatEventDate(value)}（请选择具体日期）
-        </p>
+        <p className="text-xs text-muted-foreground">当前：{formatEventDate(value)}（请选择具体日期）</p>
       )}
     </div>
   );
