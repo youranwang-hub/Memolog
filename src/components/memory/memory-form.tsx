@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Loader2, Check } from "lucide-react";
+import { Plus, Loader2, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { createMemory } from "@/lib/memories";
 import { getAuthHeaders } from "@/lib/api-client";
@@ -38,6 +38,14 @@ interface Props {
 }
 
 type DateMode = "single" | "range";
+const MAX_TAGS = 8;
+const MAX_TAG_LENGTH = 16;
+
+function normalizeTags(tags: string[]) {
+  return Array.from(
+    new Set(tags.map((tag) => tag.trim().replace(/\s+/g, " ")).filter(Boolean))
+  ).slice(0, MAX_TAGS);
+}
 
 export function MemoryForm({ userId, categories, onSaved }: Props) {
   const [rawInput, setRawInput] = useState("");
@@ -47,6 +55,7 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
   const [extracted, setExtracted] = useState<ExtractedMemory | null>(null);
   const [saved, setSaved] = useState(false);
   const [dateMode, setDateMode] = useState<DateMode>("single");
+  const [tagInput, setTagInput] = useState("");
 
   async function handleExtract() {
     if (!rawInput.trim()) return;
@@ -65,7 +74,7 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
         return;
       }
 
-      setExtracted(data.extracted);
+      setExtracted({ ...data.extracted, tags: normalizeTags(data.extracted.tags ?? []) });
       // 根据 AI 返回是否有 event_date_end 判断日期模式
       setDateMode(data.extracted.event_date_end ? "range" : "single");
       setShowEditor(true);
@@ -79,6 +88,22 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
   function updateField(field: keyof ExtractedMemory, value: string | string[]) {
     if (!extracted) return;
     setExtracted({ ...extracted, [field]: value });
+  }
+
+  function addTags(rawValue = tagInput) {
+    if (!extracted) return;
+    const candidates = rawValue.split(/[,，\n]/).map((tag) => tag.slice(0, MAX_TAG_LENGTH));
+    const nextTags = normalizeTags([...extracted.tags, ...candidates]);
+    if (nextTags.length === extracted.tags.length && candidates.some((tag) => tag.trim())) {
+      toast.error(`每条记忆最多 ${MAX_TAGS} 个标签`);
+    }
+    updateField("tags", nextTags);
+    setTagInput("");
+  }
+
+  function removeTag(tag: string) {
+    if (!extracted) return;
+    updateField("tags", extracted.tags.filter((item) => item !== tag));
   }
 
   async function handleSave() {
@@ -105,6 +130,7 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
         setShowEditor(false);
         setSaved(false);
         setDateMode("single");
+        setTagInput("");
         onSaved();
       }, 1000);
     } catch (err) {
@@ -158,6 +184,7 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
           setExtracted(null);
           setSaved(false);
           setDateMode("single");
+          setTagInput("");
         }
       }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -270,6 +297,56 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
                 />
               </div>
 
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <Label className="text-xs">标签</Label>
+                  <span className="text-[11px] text-muted-foreground">{extracted.tags.length}/{MAX_TAGS}</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {extracted.tags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="gap-1 py-1 pl-2">
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => removeTag(tag)}
+                        className="rounded-sm hover:text-destructive"
+                        aria-label={`删除标签 ${tag}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                  {extracted.tags.length === 0 && (
+                    <span className="text-xs text-muted-foreground">AI 暂未提取标签，可自行补充</span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={tagInput}
+                    onChange={(event) => setTagInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        addTags();
+                      }
+                    }}
+                    placeholder="输入标签后按 Enter，可用逗号分隔"
+                    maxLength={MAX_TAG_LENGTH * 2 + 1}
+                    className="h-8 text-sm"
+                    disabled={extracted.tags.length >= MAX_TAGS}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addTags()}
+                    disabled={!tagInput.trim() || extracted.tags.length >= MAX_TAGS}
+                  >
+                    添加
+                  </Button>
+                </div>
+              </div>
+
               <div className="space-y-1.5">
                 <Label className="text-xs">情绪</Label>
                 <div className="flex flex-wrap gap-1.5">
@@ -311,6 +388,7 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
                 setShowEditor(false);
                 setSaved(false);
                 setDateMode("single");
+                setTagInput("");
               }}
             >
               取消
