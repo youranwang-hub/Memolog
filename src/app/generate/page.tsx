@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MarkdownContent } from "@/components/ui/markdown-content";
 import { Clock3, Copy, History, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { getAuthHeaders } from "@/lib/api-client";
@@ -34,6 +35,14 @@ function emptyResults() {
   };
 }
 
+function emptyInputs(): Record<GenerateType, Record<string, unknown>> {
+  return {
+    resume: {},
+    intro: {},
+    custom: {},
+  };
+}
+
 function formatTime(value: string) {
   return new Intl.DateTimeFormat("zh-CN", {
     month: "2-digit",
@@ -51,6 +60,7 @@ export default function GeneratePage() {
   const [generating, setGenerating] = useState(false);
   const [activeType, setActiveType] = useState<GenerateType>("resume");
   const [results, setResults] = useState<Record<GenerateType, string>>(emptyResults);
+  const [resultInputs, setResultInputs] = useState<Record<GenerateType, Record<string, unknown>>>(emptyInputs);
   const [history, setHistory] = useState<GeneratedHistory[]>([]);
 
   const [resumePosition, setResumePosition] = useState("");
@@ -74,11 +84,11 @@ export default function GeneratePage() {
       .finally(() => setLoadingHistory(false));
   }, []);
 
-  function getHistoryDraft(type: GenerateType, content: string) {
+  function getHistoryDraft(type: GenerateType, content: string, historyTitle: string) {
     if (type === "resume") {
       return {
         type,
-        title: resumePosition.trim() || "通用简历",
+        title: historyTitle || resumePosition.trim() || "通用简历",
         prompt_summary: resumeJd.trim() ? `JD ${resumeJd.trim().slice(0, 32)}` : "未填写 JD",
         content,
         inputs: { position: resumePosition, jd: resumeJd },
@@ -88,7 +98,7 @@ export default function GeneratePage() {
     if (type === "intro") {
       return {
         type,
-        title: introScene.trim() || "面试自我介绍",
+        title: historyTitle || introScene.trim() || "面试自我介绍",
         prompt_summary: "按场景生成",
         content,
         inputs: { scene: introScene },
@@ -97,7 +107,7 @@ export default function GeneratePage() {
 
     return {
       type,
-      title: customPrompt.trim().slice(0, 24) || "自定义生成",
+      title: historyTitle || customPrompt.trim().slice(0, 24) || "自定义生成",
       prompt_summary: customPrompt.trim().slice(0, 48) || "未填写需求",
       content,
       inputs: { prompt: customPrompt },
@@ -136,12 +146,15 @@ export default function GeneratePage() {
       }
 
       const content = data.content as string;
+      const historyTitle = typeof data.historyTitle === "string" ? data.historyTitle : "";
+      const draft = getHistoryDraft(type, content, historyTitle);
       const item = await createGeneratedHistory({
         user_id: user.id,
-        ...getHistoryDraft(type, content),
+        ...draft,
       });
 
       setResults((current) => ({ ...current, [type]: content }));
+      setResultInputs((current) => ({ ...current, [type]: draft.inputs }));
       setHistory((current) => [item, ...current]);
       toast.success(`已保存到${TYPE_LABELS[type]}历史`);
     } catch {
@@ -154,6 +167,7 @@ export default function GeneratePage() {
   function handleSelectHistory(item: GeneratedHistory) {
     setActiveType(item.type);
     setResults((current) => ({ ...current, [item.type]: item.content }));
+    setResultInputs((current) => ({ ...current, [item.type]: item.inputs }));
   }
 
   async function handleDeleteHistory(id: string) {
@@ -170,6 +184,13 @@ export default function GeneratePage() {
     await navigator.clipboard.writeText(activeResult);
     toast.success("已复制到剪贴板");
   }
+
+  const activePrompt =
+    activeType === "resume"
+      ? [String(resultInputs.resume.position ?? ""), String(resultInputs.resume.jd ?? "")].filter(Boolean).join("\n\n")
+      : activeType === "intro"
+        ? String(resultInputs.intro.scene ?? "")
+        : String(resultInputs.custom.prompt ?? "");
 
   if (loadingMemories) {
     return (
@@ -295,9 +316,13 @@ export default function GeneratePage() {
                 </Button>
               </CardHeader>
               <CardContent>
-                <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap text-sm leading-relaxed">
-                  {activeResult}
-                </div>
+                <MarkdownContent content={activeResult} />
+                {activePrompt && (
+                  <details className="mt-5 border-t pt-3 text-sm">
+                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground">本次需求</summary>
+                    <p className="mt-2 whitespace-pre-wrap text-muted-foreground">{activePrompt}</p>
+                  </details>
+                )}
               </CardContent>
             </Card>
           )}
@@ -348,7 +373,6 @@ export default function GeneratePage() {
                         {formatTime(item.created_at)}
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2">{item.prompt_summary}</p>
                   </div>
                   <div className="mt-2 flex justify-end">
                     <Button

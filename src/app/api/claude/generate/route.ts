@@ -10,6 +10,22 @@ function limitText(value: unknown) {
   return value.trim().slice(0, MAX_FIELD_LENGTH);
 }
 
+function fallbackHistoryTitle(type: "resume" | "intro" | "custom") {
+  if (type === "resume") return "个人简历";
+  if (type === "intro") return "自我介绍";
+  return "自定义内容";
+}
+
+function normalizeHistoryTitle(value: string, fallback: string) {
+  const title = value
+    .trim()
+    .split("\n")[0]
+    .replace(/^标题[：:]\s*/, "")
+    .replace(/^[#*_\s"']+|[#*_\s"']+$/g, "")
+    .slice(0, 20);
+  return title || fallback;
+}
+
 export async function POST(request: Request) {
   try {
     const { error, supabase, user } = await requireUser(request);
@@ -101,7 +117,20 @@ ${safeJd ? `补充信息：${safeJd}` : ""}`;
       maxTokens: 2000,
     });
 
-    return NextResponse.json({ content });
+    const fallbackTitle = fallbackHistoryTitle(safeType);
+    let historyTitle = fallbackTitle;
+    try {
+      const title = await chat({
+        systemPrompt: "你是个人资料库的索引编辑。请为一段生成内容写一个8到14字的中文标题，概括重点和用途，便于日后快速检索。只返回标题本身，不要标点、引号、Markdown或解释。",
+        userPrompt: `生成类型：${safeType}\n\n生成内容：\n${content}`,
+        maxTokens: 80,
+      });
+      historyTitle = normalizeHistoryTitle(title, fallbackTitle);
+    } catch (titleError) {
+      console.warn("History title generation failed:", titleError);
+    }
+
+    return NextResponse.json({ content, historyTitle });
   } catch (error) {
     console.error("Generate error:", error);
     return NextResponse.json({ error: "生成失败，请稍后重试" }, { status: 500 });
