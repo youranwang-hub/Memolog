@@ -1,5 +1,7 @@
 # Memolog
 
+在线体验：[https://memolog-v6nv.vercel.app](https://memolog-v6nv.vercel.app)
+
 > 把真实经历沉淀为可检索、可复用的个人记忆库。
 
 Memolog 是一个面向学生和初入职场用户的个人第二大脑。它不是通用聊天工具，而是帮助你随手记录经历、保留细节，并在写简历、准备自我介绍或整理思路时，从自己的真实记忆中生成内容。
