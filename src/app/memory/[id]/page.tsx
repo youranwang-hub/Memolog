@@ -23,7 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Trash2, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, Trash2, Save, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import type { Memory, Category, Emotion } from "@/lib/types";
 import { EMOTIONS, EMOTION_MAP } from "@/lib/types";
@@ -35,6 +35,14 @@ import { fetchProfile } from "@/lib/profile";
 import { getCategories } from "@/lib/types";
 
 type DateMode = "single" | "range";
+const MAX_TAGS = 8;
+const MAX_TAG_LENGTH = 16;
+
+function normalizeTags(tags: string[]) {
+  return Array.from(
+    new Set(tags.map((tag) => tag.trim().replace(/\s+/g, " ")).filter(Boolean))
+  ).slice(0, MAX_TAGS);
+}
 
 export default function MemoryDetailPage({
   params,
@@ -51,6 +59,7 @@ export default function MemoryDetailPage({
   const [showDelete, setShowDelete] = useState(false);
   const [dateMode, setDateMode] = useState<DateMode>("single");
   const [categories, setCategories] = useState<string[]>(getCategories());
+  const [tagInput, setTagInput] = useState("");
 
   const [form, setForm] = useState({
     event_date: "",
@@ -80,7 +89,7 @@ export default function MemoryDetailPage({
           content: data.content,
           emotion: data.emotion,
           emotion_note: data.emotion_note,
-          tags: data.tags,
+          tags: normalizeTags(data.tags ?? []),
           raw_input: data.raw_input,
         });
       })
@@ -123,6 +132,24 @@ export default function MemoryDetailPage({
     } catch {
       toast.error("删除失败");
     }
+  }
+
+  function addTags(rawValue = tagInput) {
+    const candidates = rawValue
+      .split(/[,，\n]/)
+      .map((tag) => tag.slice(0, MAX_TAG_LENGTH));
+    const nextTags = normalizeTags([...form.tags, ...candidates]);
+
+    if (nextTags.length === form.tags.length && candidates.some((tag) => tag.trim())) {
+      toast.error(`每条记忆最多 ${MAX_TAGS} 个标签`);
+    }
+
+    setForm({ ...form, tags: nextTags });
+    setTagInput("");
+  }
+
+  function removeTag(tag: string) {
+    setForm({ ...form, tags: form.tags.filter((item) => item !== tag) });
   }
 
   if (loading) {
@@ -315,6 +342,58 @@ export default function MemoryDetailPage({
                 rows={8}
                 className="resize-y leading-relaxed"
               />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <Label className="text-xs">标签</Label>
+                <span className="text-[11px] text-muted-foreground">
+                  {form.tags.length}/{MAX_TAGS}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {form.tags.map((tag) => (
+                  <Badge key={tag} variant="secondary" className="gap-1 py-1 pl-2">
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => removeTag(tag)}
+                      className="rounded-sm hover:text-destructive"
+                      aria-label={`删除标签 ${tag}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                {form.tags.length === 0 && (
+                  <span className="text-xs text-muted-foreground">还没有标签</span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={tagInput}
+                  onChange={(event) => setTagInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addTags();
+                    }
+                  }}
+                  placeholder="输入标签后按 Enter，可用逗号分隔"
+                  maxLength={MAX_TAG_LENGTH * 2 + 1}
+                  className="h-9"
+                  disabled={form.tags.length >= MAX_TAGS}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addTags()}
+                  disabled={!tagInput.trim() || form.tags.length >= MAX_TAGS}
+                >
+                  添加
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-1.5">
