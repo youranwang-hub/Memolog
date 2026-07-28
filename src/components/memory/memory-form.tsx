@@ -148,7 +148,7 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
           <div className="flex gap-2">
             <div className="flex-1">
               <Textarea
-                placeholder="今天做了什么？可以写完整经历、过程和细节，AI 帮你整理…"
+                placeholder="不必纠结取舍，履历素材、成长点滴与生活碎片都值得留存；交由 AI 妥帖整理，珍藏每一段过往。"
                 value={rawInput}
                 onChange={(e) => setRawInput(e.target.value)}
                 onKeyDown={(e) => {
