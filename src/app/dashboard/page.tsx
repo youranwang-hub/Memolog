@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { MemoryForm } from "@/components/memory/memory-form";
 import { MemoryCard } from "@/components/memory/memory-card";
+import { MemoryHeatmap } from "@/components/memory/memory-heatmap";
 import { MemoryGraph } from "@/components/memory/memory-graph";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { GitFork, Grid2X2, Search, Filter, X } from "lucide-react";
+import { CalendarDays, GitFork, Grid2X2, Search, Filter, X } from "lucide-react";
 import type { Memory } from "@/lib/types";
 import { getCategories } from "@/lib/types";
 import { fetchMemories } from "@/lib/memories";
@@ -77,7 +78,7 @@ export default function DashboardPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("all");
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
-  const [view, setView] = useState<"grid" | "graph">("grid");
+  const [view, setView] = useState<"heatmap" | "grid" | "graph">("heatmap");
   const [showProfileNudge, setShowProfileNudge] = useState(false);
   const [categories, setCategories] = useState<string[]>(getCategories());
 
@@ -156,7 +157,8 @@ export default function DashboardPage() {
     };
   }, [user]);
 
-  const hasFilters = category !== "all" || timeFilter !== "all" || search.trim() !== "";
+  const hasFilters =
+    category !== "all" || (view !== "heatmap" && timeFilter !== "all") || search.trim() !== "";
   const timeOptions = useMemo(() => {
     const monthKeys = Array.from(
       new Set(baseMemories.map(getEventMonthKey).filter((value): value is string => Boolean(value)))
@@ -231,18 +233,20 @@ export default function DashboardPage() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={timeFilter} onValueChange={(v) => setTimeFilter((v ?? "all") as TimeFilter)}>
-          <SelectTrigger className="h-8 w-[98px] text-sm">
-            <SelectValue placeholder="时间" />
-          </SelectTrigger>
-          <SelectContent>
-            {timeOptions.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {view !== "heatmap" && (
+          <Select value={timeFilter} onValueChange={(v) => setTimeFilter((v ?? "all") as TimeFilter)}>
+            <SelectTrigger className="h-8 w-[98px] text-sm">
+              <SelectValue placeholder="时间" />
+            </SelectTrigger>
+            <SelectContent>
+              {timeOptions.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         {hasFilters && (
           <Button
             variant="ghost"
@@ -264,10 +268,24 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-base font-medium">记忆库</h1>
           <p className="text-xs text-muted-foreground">
-            {view === "graph" ? "从分类、标签和经历之间看见自己的成长路径" : `${memories.length} 条记录`}
+            {view === "heatmap"
+              ? "按经历发生日期回望这一年"
+              : view === "graph"
+                ? "从分类、标签和经历之间看见自己的成长路径"
+                : `${memories.length} 条记录`}
           </p>
         </div>
         <div className="flex rounded-md border bg-background p-0.5">
+          <Button
+            variant={view === "heatmap" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-8 px-2"
+            onClick={() => setView("heatmap")}
+            aria-label="回望视图"
+          >
+            <CalendarDays className="h-4 w-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">回望</span>
+          </Button>
           <Button
             variant={view === "grid" ? "secondary" : "ghost"}
             size="sm"
@@ -295,6 +313,8 @@ export default function DashboardPage() {
         <div className="flex justify-center py-16">
           <div className="animate-spin h-6 w-6 border-2 border-stone-400 border-t-transparent rounded-full" />
         </div>
+      ) : view === "heatmap" ? (
+        <MemoryHeatmap memories={baseMemories} />
       ) : memories.length === 0 ? (
         <div className="text-center py-16 space-y-3">
           <p className="text-muted-foreground text-sm">

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Memory } from "@/lib/types";
 import { EMOTION_MAP } from "@/lib/types";
 import { Calendar, Tag } from "lucide-react";
+import { getCategoryColor } from "@/lib/category-colors";
 import { cn } from "@/lib/utils";
 import { formatEventDateRange } from "@/lib/dates";
 
@@ -17,16 +18,7 @@ interface Props {
 export function MemoryCard({ memory }: Props) {
   const emotionInfo = EMOTION_MAP[memory.emotion];
 
-  const categoryIndex = Array.from(memory.category).reduce((sum, char) => sum + char.charCodeAt(0), 0) % 7;
-  const categoryColors = [
-    "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800",
-    "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800",
-    "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800",
-    "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:border-violet-800",
-    "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800",
-    "bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950 dark:text-cyan-300 dark:border-cyan-800",
-    "bg-stone-50 text-stone-700 border-stone-200 dark:bg-stone-800 dark:text-stone-300 dark:border-stone-700",
-  ];
+  const categoryColor = getCategoryColor(memory.category);
 
   return (
     <Link href={`/memory/${memory.id}`}>
@@ -56,7 +48,7 @@ export function MemoryCard({ memory }: Props) {
           <div className="flex flex-wrap gap-1.5">
             <Badge
               variant="outline"
-              className={cn("text-xs border", categoryColors[categoryIndex])}
+              className={cn("text-xs border", categoryColor.badge)}
             >
               {memory.category}
             </Badge>
