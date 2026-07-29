@@ -20,6 +20,15 @@ export interface Memory {
   raw_input: string;
 }
 
+export interface MemoryAttachment {
+  id: string;
+  memory_id: string;
+  user_id: string;
+  storage_path: string;
+  sort_order: number;
+  created_at: string;
+}
+
 export interface ExtractedMemory {
   event_date: string;
   event_date_end?: string | null;

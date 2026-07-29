@@ -69,6 +69,11 @@ ADD COLUMN IF NOT EXISTS custom_categories TEXT[] NOT NULL DEFAULT '{}';
 
 ### 4. 启动开发服务
 
+### 3.1 启用相关图片
+
+在 Supabase 项目的 **SQL Editor** 中执行 [supabase-memory-images.sql](./supabase-memory-images.sql)。
+它会创建私有图片 Bucket、附件表和按用户隔离的访问策略；支持 JPG、PNG、WebP，单张上限 5MB。
+
 ```bash
 npm run dev
 ```

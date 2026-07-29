@@ -30,6 +30,8 @@ import { normalizeEventDate, formatEventDateRange } from "@/lib/dates";
 import type { ExtractedMemory } from "@/lib/types";
 import { getCategories, EMOTIONS } from "@/lib/types";
 import { DatePicker } from "@/components/ui/date-picker";
+import { MemoryImagePicker, type PendingMemoryImage } from "@/components/memory/memory-image-picker";
+import { uploadMemoryAttachments } from "@/lib/memory-attachments";
 
 interface Props {
   userId: string;
@@ -56,6 +58,7 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
   const [saved, setSaved] = useState(false);
   const [dateMode, setDateMode] = useState<DateMode>("single");
   const [tagInput, setTagInput] = useState("");
+  const [pendingImages, setPendingImages] = useState<PendingMemoryImage[]>([]);
 
   async function handleExtract() {
     if (!rawInput.trim()) return;
@@ -111,7 +114,7 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
     setSaving(true);
 
     try {
-      await createMemory({
+      const memory = await createMemory({
         user_id: userId,
         ...extracted,
         event_date: normalizeEventDate(extracted.event_date),
@@ -122,6 +125,14 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
         raw_input: rawInput.trim(),
       });
 
+      if (pendingImages.length > 0) {
+        await uploadMemoryAttachments({
+          memoryId: memory.id,
+          userId,
+          files: pendingImages.map((image) => image.file),
+        });
+      }
+
       setSaved(true);
       toast.success("已记录到你的经历库");
       setTimeout(() => {
@@ -131,6 +142,7 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
         setSaved(false);
         setDateMode("single");
         setTagInput("");
+        setPendingImages([]);
         onSaved();
       }, 1000);
     } catch (err) {
@@ -175,6 +187,12 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
               )}
             </Button>
           </div>
+          <MemoryImagePicker
+            images={pendingImages}
+            onChange={setPendingImages}
+            disabled={extracting || saving}
+            compact
+          />
         </CardContent>
       </Card>
 
@@ -185,6 +203,7 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
           setSaved(false);
           setDateMode("single");
           setTagInput("");
+          setPendingImages([]);
         }
       }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -297,6 +316,12 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
                 />
               </div>
 
+              <MemoryImagePicker
+                images={pendingImages}
+                onChange={setPendingImages}
+                disabled={saving}
+              />
+
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-3">
                   <Label className="text-xs">标签</Label>
@@ -389,6 +414,7 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
                 setSaved(false);
                 setDateMode("single");
                 setTagInput("");
+                setPendingImages([]);
               }}
             >
               取消
