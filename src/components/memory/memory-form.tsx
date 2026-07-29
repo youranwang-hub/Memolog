@@ -355,7 +355,7 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
                         addTags();
                       }
                     }}
-                    placeholder="输入标签后按 Enter，可用逗号分隔"
+                    placeholder="输入标签，可用逗号分隔"
                     maxLength={MAX_TAG_LENGTH * 2 + 1}
                     className="h-8 text-sm"
                     disabled={extracted.tags.length >= MAX_TAGS}

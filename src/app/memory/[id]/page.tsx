@@ -517,7 +517,7 @@ export default function MemoryDetailPage({
                       addTags();
                     }
                   }}
-                  placeholder="输入标签后按 Enter，可用逗号分隔"
+                  placeholder="输入标签，可用逗号分隔"
                   maxLength={MAX_TAG_LENGTH * 2 + 1}
                   className="h-9"
                   disabled={form.tags.length >= MAX_TAGS}
