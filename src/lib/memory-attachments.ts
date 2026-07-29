@@ -4,6 +4,7 @@ import type { MemoryAttachment } from "@/lib/types";
 export const MEMORY_IMAGE_BUCKET = "memory-images";
 export const MAX_MEMORY_IMAGES = 6;
 export const MAX_MEMORY_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_CONCURRENT_UPLOADS = 2;
 export const ACCEPTED_MEMORY_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 function getFileExtension(file: File) {
@@ -59,21 +60,43 @@ export async function uploadMemoryAttachments({
   const uploadedPaths: string[] = [];
 
   try {
-    for (const file of files) {
-      const storagePath = `${userId}/${memoryId}/${crypto.randomUUID()}.${getFileExtension(file)}`;
-      const { error } = await getSupabase()
-        .storage
-        .from(MEMORY_IMAGE_BUCKET)
-        .upload(storagePath, file, { contentType: file.type, upsert: false });
+    const storagePaths = new Array<string>(files.length);
+    let nextIndex = 0;
+    let uploadError: unknown;
 
-      if (error) throw error;
-      uploadedPaths.push(storagePath);
+    async function worker() {
+      while (!uploadError) {
+        const index = nextIndex;
+        nextIndex += 1;
+        if (index >= files.length) return;
+
+        try {
+          const file = files[index];
+          const storagePath = `${userId}/${memoryId}/${crypto.randomUUID()}.${getFileExtension(file)}`;
+          const { error } = await getSupabase()
+            .storage
+            .from(MEMORY_IMAGE_BUCKET)
+            .upload(storagePath, file, { contentType: file.type, upsert: false });
+
+          if (error) throw error;
+          storagePaths[index] = storagePath;
+          uploadedPaths.push(storagePath);
+        } catch (error) {
+          uploadError = error;
+          return;
+        }
+      }
     }
+
+    await Promise.all(
+      Array.from({ length: Math.min(MAX_CONCURRENT_UPLOADS, files.length) }, () => worker())
+    );
+    if (uploadError) throw uploadError;
 
     const { data, error } = await getSupabase()
       .from("memory_attachments")
       .insert(
-        uploadedPaths.map((storagePath, index) => ({
+        storagePaths.map((storagePath, index) => ({
           memory_id: memoryId,
           user_id: userId,
           storage_path: storagePath,

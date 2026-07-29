@@ -71,6 +71,7 @@ export default function MemoryDetailPage({
   const [categories, setCategories] = useState<string[]>(getCategories());
   const [tagInput, setTagInput] = useState("");
   const [attachments, setAttachments] = useState<AttachmentPreview[]>([]);
+  const [selectedAttachment, setSelectedAttachment] = useState<AttachmentPreview | null>(null);
   const [pendingImages, setPendingImages] = useState<PendingMemoryImage[]>([]);
   const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>([]);
 
@@ -319,11 +320,11 @@ export default function MemoryDetailPage({
                 <Label className="text-xs text-muted-foreground">相关图片</Label>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {attachments.map((attachment) => (
-                    <a
+                    <button
                       key={attachment.id}
-                      href={attachment.url}
-                      target="_blank"
-                      rel="noreferrer"
+                      type="button"
+                      onClick={() => setSelectedAttachment(attachment)}
+                      aria-label={`查看图片 ${attachment.sort_order + 1}`}
                       className="relative block aspect-[4/3] overflow-hidden rounded-md border bg-muted"
                     >
                       <Image
@@ -333,7 +334,7 @@ export default function MemoryDetailPage({
                         unoptimized
                         className="h-full w-full object-cover transition-transform hover:scale-[1.02]"
                       />
-                    </a>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -571,6 +572,24 @@ export default function MemoryDetailPage({
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={Boolean(selectedAttachment)} onOpenChange={(open) => !open && setSelectedAttachment(null)}>
+        <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden p-2 sm:max-w-4xl">
+          <DialogHeader className="sr-only">
+            <DialogTitle>相关图片预览</DialogTitle>
+          </DialogHeader>
+          {selectedAttachment && (
+            <Image
+              src={selectedAttachment.url}
+              alt="相关记忆图片预览"
+              width={1600}
+              height={1200}
+              unoptimized
+              className="h-auto max-h-[80vh] w-auto max-w-full object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showDelete} onOpenChange={setShowDelete}>
         <DialogContent>

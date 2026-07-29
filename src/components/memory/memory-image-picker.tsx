@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ImagePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import {
   MAX_MEMORY_IMAGES,
   validateMemoryImageFiles,
 } from "@/lib/memory-attachments";
+import { compressMemoryImages } from "@/lib/memory-image-processing";
 import { toast } from "sonner";
 
 export interface PendingMemoryImage {
@@ -34,6 +35,7 @@ export function MemoryImagePicker({
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const imagesRef = useRef(images);
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     const previousUrls = new Set(imagesRef.current.map((image) => image.previewUrl));
@@ -48,7 +50,7 @@ export function MemoryImagePicker({
     return () => imagesRef.current.forEach((image) => URL.revokeObjectURL(image.previewUrl));
   }, []);
 
-  function addFiles(files: File[]) {
+  async function addFiles(files: File[]) {
     if (files.length === 0) return;
     if (images.length + files.length > maxImages) {
       toast.error(`每条记忆最多添加 ${MAX_MEMORY_IMAGES} 张图片`);
@@ -57,9 +59,11 @@ export function MemoryImagePicker({
 
     try {
       validateMemoryImageFiles(files);
+      setProcessing(true);
+      const compressedFiles = await compressMemoryImages(files);
       onChange([
         ...images,
-        ...files.map((file) => ({
+        ...compressedFiles.map((file) => ({
           id: crypto.randomUUID(),
           file,
           previewUrl: URL.createObjectURL(file),
@@ -67,6 +71,8 @@ export function MemoryImagePicker({
       ]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "图片无法添加");
+    } finally {
+      setProcessing(false);
     }
   }
 
@@ -79,7 +85,9 @@ export function MemoryImagePicker({
       {!compact && (
         <div className="flex items-center justify-between gap-3">
           <Label className="text-xs">相关图片</Label>
-          <span className="text-[11px] text-muted-foreground">{images.length}/{MAX_MEMORY_IMAGES}</span>
+          <span className="text-[11px] text-muted-foreground">
+            {processing ? "正在优化图片..." : `${images.length}/${MAX_MEMORY_IMAGES}`}
+          </span>
         </div>
       )}
       <div className="flex flex-wrap gap-2">
@@ -110,7 +118,7 @@ export function MemoryImagePicker({
           size="icon"
           className="h-16 w-16 shrink-0 border-dashed"
           onClick={() => inputRef.current?.click()}
-          disabled={disabled || images.length >= maxImages}
+          disabled={disabled || processing || images.length >= maxImages}
           aria-label="添加图片"
         >
           <ImagePlus className="h-4 w-4" />
@@ -123,7 +131,7 @@ export function MemoryImagePicker({
         multiple
         className="hidden"
         onChange={(event) => {
-          addFiles(Array.from(event.target.files ?? []));
+          void addFiles(Array.from(event.target.files ?? []));
           event.target.value = "";
         }}
       />
