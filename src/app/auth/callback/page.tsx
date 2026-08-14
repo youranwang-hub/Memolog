@@ -6,14 +6,21 @@ import { getSupabase } from "@/lib/supabase";
 export default function AuthCallbackPage() {
   useEffect(() => {
     async function handleCallback() {
-      const { data, error } = await getSupabase().auth.getSession();
-      if (error) {
-        console.error("Callback session error:", error);
+      const code = new URLSearchParams(window.location.search).get("code");
+    
+      const result = code
+        ? await getSupabase().auth.exchangeCodeForSession(code)
+        : await getSupabase().auth.getSession();
+    
+      if (result.error) {
+        console.error("Callback session error:", result.error);
+        return;
       }
-      if (data.session) {
-        window.location.href = "/dashboard";
-      }
-    }
+    
+      if (result.data.session) {
+        window.location.replace("/dashboard");
+  }
+}
     handleCallback();
   }, []);
 

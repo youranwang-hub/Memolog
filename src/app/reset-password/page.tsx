@@ -19,15 +19,20 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     async function checkSession() {
-      const { data, error } = await getSupabase().auth.getSession();
-      if (error || !data.session) {
+      const code = new URLSearchParams(window.location.search).get("code");
+  
+      const result = code
+        ? await getSupabase().auth.exchangeCodeForSession(code)
+        : await getSupabase().auth.getSession();
+  
+      if (result.error || !result.data.session) {
         setErrorMsg("验证链接无效或已过期，请重新发送密码重置邮件");
       }
       setCheckingSession(false);
     }
-
+  
     checkSession();
-  }, []);
+}, []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
