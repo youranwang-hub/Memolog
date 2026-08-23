@@ -4,7 +4,6 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import { useRouter } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 import type { User, Session } from "@supabase/supabase-js";
-import { getAuthRedirectUrl } from "@/lib/mobile-auth";
 
 interface AuthContextType {
   user: User | null;
@@ -68,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       password,
       options: {
-        emailRedirectTo: getAuthRedirectUrl("/auth/callback"),
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
     console.log("[Auth] signUp result:", { userId: data.user?.id, identities: data.user?.identities?.length, error: error?.message });
@@ -100,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const sendPasswordResetEmail = useCallback(async (email: string) => {
     const { error } = await getSupabase().auth.resetPasswordForEmail(email, {
-      redirectTo: getAuthRedirectUrl("/reset-password"),
+      redirectTo: `${window.location.origin}/reset-password`,
     });
     if (error) return { error: error.message };
     return {};
