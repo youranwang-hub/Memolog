@@ -125,16 +125,26 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
         raw_input: rawInput.trim(),
       });
 
+      let imageUploadFailed = false;
       if (pendingImages.length > 0) {
-        await uploadMemoryAttachments({
-          memoryId: memory.id,
-          userId,
-          files: pendingImages.map((image) => image.file),
-        });
+        try {
+          await uploadMemoryAttachments({
+            memoryId: memory.id,
+            userId,
+            files: pendingImages.map((image) => image.file),
+          });
+        } catch (imageError) {
+          imageUploadFailed = true;
+          console.error("Upload memory images error:", imageError);
+        }
       }
 
       setSaved(true);
-      toast.success("已记录到你的经历库");
+      if (imageUploadFailed) {
+        toast.warning("经历已保存，但图片上传失败，可在详情页稍后补充");
+      } else {
+        toast.success("已记录到你的经历库");
+      }
       setTimeout(() => {
         setRawInput("");
         setExtracted(null);

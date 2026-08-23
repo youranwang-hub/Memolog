@@ -4,29 +4,11 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { getCategoryColor } from "@/lib/category-colors";
+import { formatEventDateRange } from "@/lib/dates";
+import { cn } from "@/lib/utils";
 import type { Memory } from "@/lib/types";
-
-type DaySummary = {
-  date: Date;
-  memories: Memory[];
-};
-
-const WEEKDAY_LABELS = ["Mon", "", "Wed", "", "Fri", "", ""];
-const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-function dayKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
-    date.getDate()
-  ).padStart(2, "0")}`;
-}
 
 function parseEventDay(value?: string | null) {
   if (!value || value === "未知") return null;
@@ -40,14 +22,6 @@ function parseEventDay(value?: string | null) {
   return date.getFullYear() === year && date.getMonth() === month && date.getDate() === day ? date : null;
 }
 
-function formatDay(date: Date) {
-  return new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }).format(date);
-}
-
 function getYears(memories: Memory[]) {
   const years = new Set<number>();
   for (const memory of memories) {
@@ -59,53 +33,18 @@ function getYears(memories: Memory[]) {
   return Array.from(years).sort((a, b) => b - a);
 }
 
-function buildWeeks(year: number) {
-  const start = new Date(year, 0, 1);
-  const end = new Date(year, 11, 31);
-  const startOffset = (start.getDay() + 6) % 7;
-  const endOffset = 6 - ((end.getDay() + 6) % 7);
-  const first = new Date(year, 0, 1 - startOffset);
-  const last = new Date(year, 11, 31 + endOffset);
-  const weeks: Date[][] = [];
-
-  for (let current = new Date(first); current <= last; current.setDate(current.getDate() + 7)) {
-    weeks.push(
-      Array.from({ length: 7 }, (_, index) => {
-        const date = new Date(current);
-        date.setDate(current.getDate() + index);
-        return date;
-      })
-    );
+function formatTimelineDate(memory: Memory) {
+  const start = parseEventDay(memory.event_date);
+  const end = parseEventDay(memory.event_date_end);
+  if (!start || !end) {
+    return start && /^\d{4}-\d{2}-\d{2}$/.test(memory.event_date)
+      ? `${start.getDate()} 日`
+      : "当月";
   }
 
-  return weeks;
-}
-
-function getHeatmapData(memories: Memory[], year: number) {
-  const days = new Map<string, DaySummary>();
-  const first = new Date(year, 0, 1);
-  const last = new Date(year, 11, 31);
-
-  function addMemory(date: Date, memory: Memory) {
-    if (date < first || date > last) return;
-    const key = dayKey(date);
-    const summary = days.get(key) ?? { date: new Date(date), memories: [] };
-    summary.memories.push(memory);
-    days.set(key, summary);
-  }
-
-  for (const memory of memories) {
-    const start = parseEventDay(memory.event_date);
-    if (!start) continue;
-    const end = parseEventDay(memory.event_date_end) ?? start;
-    const rangeStart = start <= end ? start : end;
-    const rangeEnd = start <= end ? end : start;
-    const isRange = dayKey(rangeStart) !== dayKey(rangeEnd);
-    addMemory(rangeStart, memory);
-    if (isRange) addMemory(rangeEnd, memory);
-  }
-
-  return days;
+  const startLabel = `${start.getMonth() + 1}.${start.getDate()}`;
+  const endLabel = `${end.getMonth() + 1}.${end.getDate()}`;
+  return `${startLabel}–${endLabel}`;
 }
 
 export function MemoryHeatmap({ memories }: { memories: Memory[] }) {
@@ -113,41 +52,50 @@ export function MemoryHeatmap({ memories }: { memories: Memory[] }) {
   const currentYear = new Date().getFullYear();
   const preferredYear = years.includes(currentYear) ? currentYear : (years[0] ?? currentYear);
   const [year, setYear] = useState(preferredYear);
-  const [selectedDay, setSelectedDay] = useState<DaySummary | null>(null);
+  const previousYear = years.find((value) => value < year);
+  const nextYear = years.slice().reverse().find((value) => value > year && value <= currentYear);
+  const monthGroups = useMemo(() => {
+    const groups = new Map<number, Memory[]>();
+    for (const memory of memories) {
+      const date = parseEventDay(memory.event_date);
+      if (!date || date.getFullYear() !== year) continue;
+      const entries = groups.get(date.getMonth()) ?? [];
+      entries.push(memory);
+      groups.set(date.getMonth(), entries);
+    }
+    return Array.from(groups, ([month, entries]) => ({
+      month,
+      memories: entries.sort((a, b) => a.event_date.localeCompare(b.event_date)),
+    })).sort((a, b) => a.month - b.month);
+  }, [memories, year]);
 
-  const weeks = useMemo(() => buildWeeks(year), [year]);
-  const heatmapData = useMemo(() => getHeatmapData(memories, year), [memories, year]);
-  const monthPositions = useMemo(
-    () =>
-      MONTH_LABELS.map((label, month) => {
-        const firstDay = new Date(year, month, 1);
-        const week = weeks.findIndex((days) => days.some((day) => dayKey(day) === dayKey(firstDay)));
-        return { label, week };
-      }).filter((month) => month.week >= 0),
-    [weeks, year]
-  );
+  const activeMonths = new Set(monthGroups.map((group) => group.month));
+  const memoryCount = monthGroups.reduce((count, group) => count + group.memories.length, 0);
+  const mostCommonCategory = Array.from(
+    monthGroups.flatMap((group) => group.memories).reduce((counts, memory) => {
+      counts.set(memory.category, (counts.get(memory.category) ?? 0) + 1);
+      return counts;
+    }, new Map<string, number>())
+  ).sort(([, countA], [, countB]) => countB - countA)[0]?.[0];
 
-  function getDayBackground(summary?: DaySummary) {
-    if (!summary) return "#f2f0eb";
-    const colors = Array.from(new Set(summary.memories.map((memory) => getCategoryColor(memory.category).heatmap)));
-    if (colors.length === 1) return colors[0];
-    return `linear-gradient(90deg, ${colors[0]} 0 50%, ${colors[1]} 50% 100%)`;
+  function scrollToMonth(month: number) {
+    document.getElementById(`memory-month-${year}-${month}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
-
-  const selectedMemories = selectedDay
-    ? Array.from(new Map(selectedDay.memories.map((memory) => [memory.id, memory])).values())
-    : [];
 
   return (
     <section aria-label="回望">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">经历足迹</p>
+          <div>
+            <p className="text-sm font-medium">{year} 年回望</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">沿着时间，找回那些真实发生过的片段。</p>
+          </div>
         <div className="flex items-center gap-1 rounded-md border bg-background p-0.5">
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
-            onClick={() => setYear((value) => value - 1)}
+            onClick={() => previousYear && setYear(previousYear)}
+            disabled={!previousYear}
             aria-label="查看上一年"
             title="查看上一年"
           >
@@ -158,7 +106,8 @@ export function MemoryHeatmap({ memories }: { memories: Memory[] }) {
             type="button"
             variant="ghost"
             size="icon-sm"
-            onClick={() => setYear((value) => value + 1)}
+            onClick={() => nextYear && setYear(nextYear)}
+            disabled={!nextYear}
             aria-label="查看下一年"
             title="查看下一年"
           >
@@ -167,74 +116,71 @@ export function MemoryHeatmap({ memories }: { memories: Memory[] }) {
         </div>
       </div>
 
-      <div className="w-full max-w-full overflow-x-auto overscroll-x-contain pb-1">
-        <div className="w-fit [--heatmap-cell:10px] sm:[--heatmap-cell:12px] lg:[--heatmap-cell:14px]">
-          <div className="ml-8 grid h-4 gap-[2px] text-[10px] text-muted-foreground sm:gap-1" style={{ gridTemplateColumns: `repeat(${weeks.length}, var(--heatmap-cell))` }}>
-            {monthPositions.map(({ label, week }) => (
-              <span key={label} style={{ gridColumnStart: week + 1 }} className="whitespace-nowrap">
-                {label}
-              </span>
-            ))}
-          </div>
-          <div className="mt-1 flex gap-[2px] sm:gap-1">
-            <div className="grid w-6 grid-rows-7 gap-[2px] text-right text-[10px] leading-[var(--heatmap-cell)] text-muted-foreground sm:gap-1">
-              {WEEKDAY_LABELS.map((label, index) => (
-                <span key={`${label}-${index}`}>{label}</span>
-              ))}
-            </div>
-            <div className="grid grid-flow-col grid-rows-7 gap-[2px] sm:gap-1">
-              {weeks.flatMap((week) =>
-                week.map((date) => {
-                  const inYear = date.getFullYear() === year;
-                  const summary = inYear ? heatmapData.get(dayKey(date)) : undefined;
-                  const count = summary?.memories.length ?? 0;
-                  return (
-                    <button
-                      key={dayKey(date)}
-                      type="button"
-                      disabled={!summary}
-                      onClick={() => summary && setSelectedDay(summary)}
-                      title={
-                        inYear
-                          ? `${formatDay(date)}${count ? `：${count} 条经历` : "：暂无经历"}`
-                          : undefined
-                      }
-                      aria-label={
-                        inYear
-                          ? `${formatDay(date)}${count ? `，${count} 条经历` : "，暂无经历"}`
-                          : undefined
-                      }
-                      className="h-[var(--heatmap-cell)] w-[var(--heatmap-cell)] rounded-[3px] transition-opacity enabled:hover:opacity-75 disabled:cursor-default"
-                      style={{ background: inYear ? getDayBackground(summary) : "transparent" }}
-                    />
-                  );
-                })
-              )}
-            </div>
-          </div>
+      <div className="rounded-lg border bg-card/60 p-4">
+        <div className="flex items-baseline justify-between gap-4">
+          <p className="text-2xl font-medium tracking-tight tabular-nums text-foreground/85">{memoryCount}</p>
+          <p className="text-right text-xs text-muted-foreground">
+            {activeMonths.size} 个活跃月份{mostCommonCategory ? ` · ${mostCommonCategory} 最多` : ""}
+          </p>
+        </div>
+        <p className="mt-0.5 text-xs text-muted-foreground">这一年留下的经历</p>
+        <div className="mt-4 grid grid-cols-12 gap-1.5">
+          {Array.from({ length: 12 }, (_, month) => {
+            const active = activeMonths.has(month);
+            return (
+              <button
+                key={month}
+                type="button"
+                disabled={!active}
+                onClick={() => scrollToMonth(month)}
+                className={cn("flex flex-col items-center gap-1 text-[10px] transition-opacity", active ? "text-foreground hover:opacity-70" : "cursor-default text-muted-foreground/55")}
+                aria-label={active ? `跳转至 ${month + 1} 月经历` : `${month + 1} 月没有记录`}
+              >
+                <span className={cn("h-2 w-2 rounded-full", !active && "bg-muted")} style={active ? { background: "#8b857d" } : undefined} />
+                <span>{month + 1}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      <Dialog open={Boolean(selectedDay)} onOpenChange={(open) => !open && setSelectedDay(null)}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{selectedDay ? formatDay(selectedDay.date) : ""}</DialogTitle>
-            <DialogDescription>当天关联的记忆</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            {selectedMemories.map((memory) => (
-              <Link
-                key={memory.id}
-                href={`/memory/${memory.id}`}
-                className="block rounded-md border px-3 py-2 transition-colors hover:bg-accent"
-              >
-                <p className="text-sm font-medium">{memory.title || "未命名记忆"}</p>
-                <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{memory.content}</p>
-              </Link>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {monthGroups.length === 0 ? (
+        <div className="py-14 text-center text-sm text-muted-foreground">这一年还没有可回望的经历。</div>
+      ) : (
+        <div className="relative mt-7 space-y-8 before:absolute before:bottom-2 before:left-[29px] before:top-2 before:w-px before:bg-border sm:before:left-[37px]">
+          {monthGroups.map((group) => (
+            <section key={group.month} id={`memory-month-${year}-${group.month}`} className="relative pl-14 sm:pl-20">
+              <div className="absolute left-0 top-0 flex w-12 flex-col items-end sm:w-16">
+                <span className="text-lg font-medium tabular-nums leading-none text-foreground/75 sm:text-xl">{String(group.month + 1).padStart(2, "0")}</span>
+                <span className="mt-1 text-[10px] text-muted-foreground">月</span>
+              </div>
+              <span className="absolute left-[26px] top-1.5 h-2 w-2 rounded-full border-2 border-background bg-stone-400 sm:left-[34px]" />
+              <div className="space-y-2">
+                {group.memories.map((memory) => {
+                  const color = getCategoryColor(memory.category);
+                  const dateLabel = formatTimelineDate(memory);
+                  return (
+                    <Link key={memory.id} href={`/memory/${memory.id}`} className="group block rounded-lg border bg-background px-3 py-3 transition-colors hover:bg-accent/60">
+                      <div className="flex items-start gap-3">
+                        <span className="w-11 shrink-0 pt-0.5 text-xs tabular-nums text-muted-foreground">{dateLabel}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="truncate text-sm font-medium">{memory.title || "未命名经历"}</p>
+                            <Badge variant="outline" className={cn("shrink-0 border text-[10px]", color.badge)}>{memory.category}</Badge>
+                          </div>
+                          <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                            {memory.result || memory.content || formatEventDateRange(memory.event_date, memory.event_date_end)}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

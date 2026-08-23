@@ -192,6 +192,52 @@ export default function GeneratePage() {
         ? String(resultInputs.intro.scene ?? "")
         : String(resultInputs.custom.prompt ?? "");
 
+  const historyContent = loadingHistory ? (
+    <div className="rounded-md border border-dashed p-4 text-xs text-muted-foreground">正在读取历史...</div>
+  ) : activeHistory.length === 0 ? (
+    <div className="rounded-md border border-dashed p-4 text-xs text-muted-foreground">
+      这个模块还没有历史。下一次生成后会自动保存到这里。
+    </div>
+  ) : (
+    <div className="space-y-2">
+      {activeHistory.map((item) => (
+        <div key={item.id} className="rounded-md border bg-card p-3 hover:border-stone-400 transition-colors">
+          <div
+            role="button"
+            tabIndex={0}
+            className="w-full text-left space-y-1 cursor-pointer"
+            onClick={() => handleSelectHistory(item)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                handleSelectHistory(item);
+              }
+            }}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium leading-snug line-clamp-2">{item.title}</p>
+              <span className="shrink-0 inline-flex items-center text-[11px] text-muted-foreground">
+                <Clock3 className="h-3 w-3 mr-1" />
+                {formatTime(item.created_at)}
+              </span>
+            </div>
+          </div>
+          <div className="mt-2 flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-muted-foreground"
+              onClick={() => handleDeleteHistory(item.id)}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" />
+              删除
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   if (loadingMemories) {
     return (
       <div className="flex justify-center py-24">
@@ -328,7 +374,18 @@ export default function GeneratePage() {
           )}
         </div>
 
-        <aside className="space-y-3">
+        <details className="rounded-md border bg-card p-3 lg:hidden">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium">
+            <span className="flex items-center gap-2">
+              <History className="h-4 w-4 text-muted-foreground" />
+              {TYPE_LABELS[activeType]}历史
+            </span>
+            <Badge variant="secondary" className="text-xs">{activeHistory.length}</Badge>
+          </summary>
+          <div className="mt-3">{historyContent}</div>
+        </details>
+
+        <aside className="hidden space-y-3 lg:block">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <History className="h-4 w-4 text-muted-foreground" />
@@ -338,57 +395,7 @@ export default function GeneratePage() {
               {activeHistory.length}
             </Badge>
           </div>
-
-          {loadingHistory ? (
-            <div className="rounded-md border border-dashed p-4 text-xs text-muted-foreground">
-              正在读取历史...
-            </div>
-          ) : activeHistory.length === 0 ? (
-            <div className="rounded-md border border-dashed p-4 text-xs text-muted-foreground">
-              这个模块还没有历史。下一次生成后会自动保存到这里。
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {activeHistory.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-md border bg-card p-3 hover:border-stone-400 transition-colors"
-                >
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    className="w-full text-left space-y-1 cursor-pointer"
-                    onClick={() => handleSelectHistory(item)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        handleSelectHistory(item);
-                      }
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-medium leading-snug line-clamp-2">{item.title}</p>
-                      <span className="shrink-0 inline-flex items-center text-[11px] text-muted-foreground">
-                        <Clock3 className="h-3 w-3 mr-1" />
-                        {formatTime(item.created_at)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex justify-end">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-muted-foreground"
-                      onClick={() => handleDeleteHistory(item.id)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5 mr-1" />
-                      删除
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {historyContent}
         </aside>
       </div>
     </div>

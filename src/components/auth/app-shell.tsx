@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -12,16 +12,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/components/auth/auth-provider";
-import { cn } from "@/lib/utils";
 import { IdCard, KeyRound, LayoutList, LogOut, Mail, Sparkles, User } from "lucide-react";
 import { toast } from "sonner";
 
@@ -36,6 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [passwordError, setPasswordError] = useState("");
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -148,29 +142,47 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </nav>
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "max-w-[140px] sm:max-w-none")}
+          <div className="relative shrink-0">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="rounded-full"
+              onClick={() => setAccountMenuOpen((open) => !open)}
+              aria-label="账户菜单"
+              title="账户菜单"
             >
-              <User className="h-4 w-4 sm:mr-1.5" />
-              <span className="hidden sm:inline truncate">{user.email}</span>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => {
-                  resetPasswordForm();
-                  setPasswordDialogOpen(true);
-                }}
-              >
-                <KeyRound className="h-4 w-4 mr-2" />
-                修改密码
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={signOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                退出登录
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <User className="h-4 w-4" />
+            </Button>
+            {accountMenuOpen && (
+              <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-52 rounded-lg border bg-popover p-1 text-popover-foreground shadow-md">
+                <p className="truncate px-2 py-1.5 text-xs text-muted-foreground">{user.email}</p>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    resetPasswordForm();
+                    setPasswordDialogOpen(true);
+                  }}
+                >
+                  <KeyRound className="h-4 w-4" />
+                  修改密码
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    void signOut();
+                  }}
+                >
+                  <LogOut className="h-4 w-4" />
+                  退出登录
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

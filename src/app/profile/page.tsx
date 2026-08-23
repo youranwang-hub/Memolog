@@ -105,7 +105,7 @@ export default function ProfilePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">基础称呼</CardTitle>
+          <CardTitle className="text-base">基础信息</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
@@ -175,7 +175,7 @@ export default function ProfilePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">当前身份</CardTitle>
+          <CardTitle className="text-base">当前阶段</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
@@ -228,22 +228,6 @@ export default function ProfilePage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm">常用邮箱</Label>
-              <Input
-                value={profile.contact_email}
-                onChange={(event) => updateField("contact_email", event.target.value)}
-                placeholder="用于简历，可留空"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">联系电话</Label>
-              <Input
-                value={profile.contact_phone}
-                onChange={(event) => updateField("contact_phone", event.target.value)}
-                placeholder="用于简历，可留空"
-              />
-            </div>
-            <div className="space-y-1.5">
               <Label className="text-sm">生成语气</Label>
               <Input
                 value={profile.preferred_tone}
@@ -252,16 +236,41 @@ export default function ProfilePage() {
               />
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-sm">补充信息</Label>
-            <Textarea
-              value={profile.extra_info}
-              onChange={(event) => updateField("extra_info", event.target.value)}
-              placeholder="任何你希望 Memolog 记住的背景：性别、年龄、城市、长期目标、个人偏好等，都可以自愿写在这里。"
-              rows={4}
-              className="resize-none"
-            />
-          </div>
+          <details className="rounded-md border bg-muted/20 px-3 py-2.5">
+            <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
+              更多可选信息
+            </summary>
+            <div className="mt-4 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className="text-sm">常用邮箱</Label>
+                  <Input
+                    value={profile.contact_email}
+                    onChange={(event) => updateField("contact_email", event.target.value)}
+                    placeholder="用于简历，可留空"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">联系电话</Label>
+                  <Input
+                    value={profile.contact_phone}
+                    onChange={(event) => updateField("contact_phone", event.target.value)}
+                    placeholder="用于简历，可留空"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">补充信息</Label>
+                <Textarea
+                  value={profile.extra_info}
+                  onChange={(event) => updateField("extra_info", event.target.value)}
+                  placeholder="如：城市、长期目标、个人偏好等，均可自愿填写。"
+                  rows={4}
+                  className="resize-none"
+                />
+              </div>
+            </div>
+          </details>
         </CardContent>
       </Card>
 
