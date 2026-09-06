@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     if (auth.error) return auth.error;
     const token = process.env.GITHUB_PERSONAL_SITE_TOKEN;
     const repo = process.env.GITHUB_PERSONAL_SITE_REPO;
-    const branch = process.env.GITHUB_PERSONAL_SITE_BRANCH || "master";
+    const branch = process.env.GITHUB_PERSONAL_SITE_BRANCH || "main";
     if (!token || !repo) return NextResponse.json({ error: "个人网站同步尚未配置" }, { status: 503 });
     const { data, error } = await auth.supabase.from("personal_site_memories").select("*").eq("is_public", true);
     if (error) throw error;
