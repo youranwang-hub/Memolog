@@ -67,7 +67,7 @@ export function MemoryGraph({ memories }: Props) {
   const [showTags, setShowTags] = useState(true);
   const [tagLimit, setTagLimit] = useState(8);
   const [memoryLimit, setMemoryLimit] = useState(10);
-  const [physicsEnabled, setPhysicsEnabled] = useState(true);
+  const [physicsEnabled, setPhysicsEnabled] = useState(false);
   const [layoutVersion, setLayoutVersion] = useState(0);
   const [positions, setPositions] = useState<Record<string, Position>>({});
   const positionsRef = useRef<Record<string, Position>>({});
@@ -319,7 +319,7 @@ export function MemoryGraph({ memories }: Props) {
   }
 
   function nodeFill(node: GraphNode) {
-    if (node.type === "root") return "#1c1917";
+    if (node.type === "root") return "#785646";
     if (node.type === "category") return getCategoryColor(node.label);
     if (node.type === "tag") return "#78716c";
     return getCategoryColor(node.memory.category);
@@ -438,7 +438,7 @@ export function MemoryGraph({ memories }: Props) {
 
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          <div className="relative h-[420px] sm:h-[520px] bg-muted/45">
+          <div className="relative h-[420px] sm:h-[520px] bg-card">
             <svg
               viewBox={`0 0 ${graph.width} ${graph.height}`}
               className="h-full w-full touch-none"
@@ -469,8 +469,8 @@ export function MemoryGraph({ memories }: Props) {
             >
               <defs>
                 <radialGradient id="graphRoot" cx="50%" cy="50%" r="70%">
-                  <stop offset="0%" stopColor="#57534e" />
-                  <stop offset="100%" stopColor="#1c1917" />
+                  <stop offset="0%" stopColor="#9b7864" />
+                  <stop offset="100%" stopColor="#785646" />
                 </radialGradient>
               </defs>
 
@@ -487,7 +487,7 @@ export function MemoryGraph({ memories }: Props) {
                     y1={from.y}
                     x2={to.x}
                     y2={to.y}
-                    stroke={active ? "#57534e" : "#d6d3d1"}
+                    stroke={active ? "#9b7864" : "#d6d3d1"}
                     strokeOpacity={active ? 0.9 : 0.32}
                     strokeWidth={active ? 2 : 1}
                   />
@@ -521,7 +521,7 @@ export function MemoryGraph({ memories }: Props) {
                       cy={position.y}
                       r={selected ? radius + 5 : radius}
                       fill={node.type === "root" ? "url(#graphRoot)" : nodeFill(node)}
-                      stroke={selected ? "#0c0a09" : "#fafaf9"}
+                      stroke={selected ? "#AE5C3D" : "#fafaf9"}
                       strokeWidth={selected ? 3 : 2}
                     />
                     {node.type === "memory" && (

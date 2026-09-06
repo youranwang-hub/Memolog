@@ -1,5 +1,6 @@
 "use client";
 
+import { CategoryLabel } from "@/components/memory/category-label";
 import Link from "next/link";
 import { toast } from "sonner";
 import { parseEventDay } from "@/lib/dates";
@@ -18,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarDays, GitFork, Grid2X2, Search, Filter, X } from "lucide-react";
+import { Search, Filter, X } from "lucide-react";
 import type { Memory } from "@/lib/types";
 import { getCategories } from "@/lib/types";
 import { fetchMemories } from "@/lib/memories";
@@ -196,46 +197,80 @@ export default function DashboardPage() {
   if (!user) return null;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+    <div className="journal-page">
+      <header className="journal-heading">
+        <p className="journal-eyebrow">我的记忆集</p>
+        <h1 className="editorial-title">把日子，慢慢写下来。</h1>
+      </header>
       <MemoryForm userId={user.id} categories={categories} onSaved={loadMemories} />
 
-      {showProfileNudge && (
-        <div className="rounded-md border bg-card/75 p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-medium">让 Memolog 更认识你一点</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              补充称呼、学校、专业和目标方向后，生成内容会更贴近你。
-            </p>
-          </div>
-          <Link
-            href="/profile"
-            className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-background px-3 text-sm hover:bg-accent hover:text-accent-foreground"
-          >
-            完善档案
-          </Link>
-        </div>
-      )}
+      {showProfileNudge && <div className="journal-note"><p>补充一点关于你，让生成的文字更贴近自己。</p><Link href="/profile" className="underline underline-offset-4 hover:text-primary">完善档案</Link></div>}
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="library-heading">
+        <div>
+          <h2>记忆，留在这里。</h2>
+          <p className="text-xs text-muted-foreground">
+            {view === "heatmap"
+              ? "按经历发生日期回望这一年"
+              : view === "graph"
+                ? "从分类、标签和经历之间看见自己的成长路径"
+                : `${memories.length} 条记录`}
+          </p>
+        </div>
+        <div className="library-tabs">
+          <Button
+            variant={view === "heatmap" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-8 px-2"
+            onClick={() => setView("heatmap")}
+            aria-pressed={view === "heatmap"}
+            aria-label="回望视图"
+          >
+            <span className="inline">回望</span>
+          </Button>
+          <Button
+            variant={view === "grid" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-8 px-2"
+            onClick={() => setView("grid")}
+            aria-pressed={view === "grid"}
+            aria-label="列表视图"
+          >
+            <span className="inline">列表</span>
+          </Button>
+          <Button
+            variant={view === "graph" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-8 px-2"
+            onClick={() => setView("graph")}
+            aria-pressed={view === "graph"}
+            aria-label="图谱视图"
+          >
+            <span className="inline">图谱</span>
+          </Button>
+        </div>
+      </div>
+
+      <div className="library-toolbar">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            placeholder="搜索记忆..."
+            placeholder="寻找一段记忆…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-8 pl-8 text-sm"
+            className="h-9 pl-8 text-sm bg-transparent border-transparent shadow-none focus-visible:border-input"
           />
         </div>
         <Select value={category} onValueChange={(v) => setCategory(v ?? "all")}>
           <SelectTrigger className="h-8 w-[90px] text-sm">
             <Filter className="h-3 w-3 mr-1" />
-            <SelectValue placeholder="分类" />
+            <SelectValue>{category === "all" ? "全部" : category}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">全部分类</SelectItem>
             {categories.map((c) => (
               <SelectItem key={c} value={c}>
-                {c}
+                <CategoryLabel category={c} />
               </SelectItem>
             ))}
           </SelectContent>
@@ -243,7 +278,7 @@ export default function DashboardPage() {
         {view !== "heatmap" && (
           <Select value={timeFilter} onValueChange={(v) => setTimeFilter((v ?? "all") as TimeFilter)}>
             <SelectTrigger className="h-8 w-[98px] text-sm">
-              <SelectValue placeholder="时间" />
+              <SelectValue>{timeOptions.find((item) => item.value === timeFilter)?.label ?? "全部时间"}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {timeOptions.map((item) => (
@@ -271,54 +306,9 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-base font-medium">记忆库</h1>
-          <p className="text-xs text-muted-foreground">
-            {view === "heatmap"
-              ? "按经历发生日期回望这一年"
-              : view === "graph"
-                ? "从分类、标签和经历之间看见自己的成长路径"
-                : `${memories.length} 条记录`}
-          </p>
-        </div>
-        <div className="flex rounded-md border bg-background p-0.5">
-          <Button
-            variant={view === "heatmap" ? "secondary" : "ghost"}
-            size="sm"
-            className="h-8 px-2"
-            onClick={() => setView("heatmap")}
-            aria-label="回望视图"
-          >
-            <CalendarDays className="h-4 w-4 sm:mr-1.5" />
-            <span className="inline">回望</span>
-          </Button>
-          <Button
-            variant={view === "grid" ? "secondary" : "ghost"}
-            size="sm"
-            className="h-8 px-2"
-            onClick={() => setView("grid")}
-            aria-label="卡片视图"
-          >
-            <Grid2X2 className="h-4 w-4 sm:mr-1.5" />
-            <span className="inline">卡片</span>
-          </Button>
-          <Button
-            variant={view === "graph" ? "secondary" : "ghost"}
-            size="sm"
-            className="h-8 px-2"
-            onClick={() => setView("graph")}
-            aria-label="图谱视图"
-          >
-            <GitFork className="h-4 w-4 sm:mr-1.5" />
-            <span className="inline">图谱</span>
-          </Button>
-        </div>
-      </div>
-
       {queryError ? (<div role="alert" className="text-sm">读取失败，请检查网络。<Button onClick={loadMemories}>重试</Button></div>) : loading ? (
         <div className="flex justify-center py-16">
-          <div className="animate-spin h-6 w-6 border-2 border-stone-400 border-t-transparent rounded-full" />
+          <p role="status" className="text-sm text-muted-foreground motion-safe:animate-pulse">正在翻开记忆…</p>
         </div>
       ) : view === "heatmap" ? (
         <MemoryTimeline memories={baseMemories} />
@@ -333,7 +323,7 @@ export default function DashboardPage() {
       ) : view === "graph" ? (
         <MemoryGraph memories={memories} />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="border-t">
           {memories.slice(0, visibleCount).map((m) => (
             <MemoryCard key={m.id} memory={m} />
           ))}

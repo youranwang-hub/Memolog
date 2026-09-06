@@ -1,11 +1,10 @@
 "use client";
 
+import { CategoryLabel } from "@/components/memory/category-label";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { getCategoryColor } from "@/lib/category-colors";
 import { parseEventDay, formatEventDateRange } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { Memory } from "@/lib/types";
@@ -73,105 +72,43 @@ export function MemoryTimeline({ memories }: { memories: Memory[] }) {
   }
 
   return (
-    <section aria-label="回望">
-      <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium">{year} 年回望</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">沿着时间，找回那些真实发生过的片段。</p>
+    <section aria-label="经历回望" className="mt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">{memoryCount} 段经历 · {activeMonths.size} 个有记录的月份{mostCommonCategory ? ` · ${mostCommonCategory} 最多` : ""}</p>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon-sm" onClick={() => previousYear && setYear(previousYear)} disabled={!previousYear} aria-label="上一年"><ChevronLeft className="h-4 w-4" /></Button>
+          <span className="text-sm tabular-nums">{year}</span>
+          <Button variant="ghost" size="icon-sm" onClick={() => nextYear && setYear(nextYear)} disabled={!nextYear} aria-label="下一年"><ChevronRight className="h-4 w-4" /></Button>
+        </div>
+      </div>
+      <div className="mt-5 grid grid-cols-12 border-b pb-3">
+        {Array.from({ length: 12 }, (_, month) => (
+          <button key={month} type="button" disabled={!activeMonths.has(month)} onClick={() => scrollToMonth(month)}
+            className={cn("mx-auto flex h-9 w-full max-w-10 items-center justify-center rounded-sm text-xs tabular-nums transition-colors", activeMonths.has(month) ? "text-primary hover:bg-accent font-medium" : "text-muted-foreground/50")}
+            aria-label={`${month + 1} 月${activeMonths.has(month) ? "，查看经历" : "，暂无记录"}`}>
+            {String(month + 1).padStart(2, "0")}
+          </button>
+        ))}
+      </div>
+      {monthGroups.length === 0 && <p className="py-14 text-center text-sm text-muted-foreground">这一年的纸页，等你慢慢写下。</p>}
+      {monthGroups.map(group => (
+        <section key={group.month} id={`memory-month-${year}-${group.month}`} className="timeline-month scroll-mt-24">
+          <div><p className="timeline-month-label">{String(group.month + 1).padStart(2, "0")}</p><p className="mt-1 text-[10px] text-muted-foreground">月</p></div>
+          <div className="min-w-0 border-t">
+            {group.memories.map(memory => (
+              <Link key={memory.id} href={`/memory/${memory.id}`} className="timeline-entry">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <h3 className="min-w-0 break-words text-base font-medium leading-7">{memory.title || "未命名经历"}</h3>
+                  <span className="shrink-0 text-xs text-muted-foreground">{formatTimelineDate(memory)}</span>
+                </div>
+                <p className="mt-2 line-clamp-2 text-sm leading-7 text-muted-foreground">{memory.result || memory.content || formatEventDateRange(memory.event_date, memory.event_date_end)}</p>
+                <p className="mt-3 text-[11px] text-muted-foreground"><CategoryLabel category={memory.category} />{memory.tags.length > 0 ? ` · ${memory.tags.slice(0, 2).join(" / ")}` : ""}</p>
+              </Link>
+            ))}
           </div>
-        <div className="flex items-center gap-1 rounded-md border bg-background p-0.5">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => previousYear && setYear(previousYear)}
-            disabled={!previousYear}
-            aria-label="查看上一年"
-            title="查看上一年"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="min-w-12 text-center text-sm font-medium tabular-nums">{year}</span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => nextYear && setYear(nextYear)}
-            disabled={!nextYear}
-            aria-label="查看下一年"
-            title="查看下一年"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      <div className="rounded-lg border bg-card/60 p-4">
-        <div className="flex items-baseline justify-between gap-4">
-          <p className="text-2xl font-medium tracking-tight tabular-nums text-foreground/85">{memoryCount}</p>
-          <p className="text-right text-xs text-muted-foreground">
-            {activeMonths.size} 个活跃月份{mostCommonCategory ? ` · ${mostCommonCategory} 最多` : ""}
-          </p>
-        </div>
-        <p className="mt-0.5 text-xs text-muted-foreground">这一年留下的经历</p>
-        <div className="mt-4 grid grid-cols-12 gap-1.5">
-          {Array.from({ length: 12 }, (_, month) => {
-            const active = activeMonths.has(month);
-            return (
-              <button
-                key={month}
-                type="button"
-                disabled={!active}
-                onClick={() => scrollToMonth(month)}
-                className={cn("flex flex-col items-center gap-1 text-[10px] transition-opacity", active ? "text-foreground hover:opacity-70" : "cursor-default text-muted-foreground/55")}
-                aria-label={active ? `跳转至 ${month + 1} 月经历` : `${month + 1} 月没有记录`}
-              >
-                <span className={cn("h-2 w-2 rounded-full", !active && "bg-muted")} style={active ? { background: "#8b857d" } : undefined} />
-                <span>{month + 1}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {undated.length > 0 && <details className="mt-4 rounded-md border p-3"><summary className="cursor-pointer text-sm">日期待补充 · {undated.length} 条</summary><div className="mt-2 space-y-2">{undated.map(memory => <Link className="block text-sm underline" key={memory.id} href={`/memory/${memory.id}`}>{memory.title}</Link>)}</div></details>}
-      {monthGroups.length === 0 ? (
-        <div className="py-14 text-center text-sm text-muted-foreground">这一年还没有可回望的经历。</div>
-      ) : (
-        <div className="relative mt-7 space-y-8 before:absolute before:bottom-2 before:left-[29px] before:top-2 before:w-px before:bg-border sm:before:left-[37px]">
-          {monthGroups.map((group) => (
-            <section key={group.month} id={`memory-month-${year}-${group.month}`} className="relative pl-14 sm:pl-20">
-              <div className="absolute left-0 top-0 flex w-12 flex-col items-end sm:w-16">
-                <span className="text-lg font-medium tabular-nums leading-none text-foreground/75 sm:text-xl">{String(group.month + 1).padStart(2, "0")}</span>
-                <span className="mt-1 text-[10px] text-muted-foreground">月</span>
-              </div>
-              <span className="absolute left-[26px] top-1.5 h-2 w-2 rounded-full border-2 border-background bg-stone-400 sm:left-[34px]" />
-              <div className="space-y-2">
-                {group.memories.map((memory) => {
-                  const color = getCategoryColor(memory.category);
-                  const dateLabel = formatTimelineDate(memory);
-                  return (
-                    <Link key={memory.id} href={`/memory/${memory.id}`} className="group block rounded-lg border bg-background px-3 py-3 transition-colors hover:bg-accent/60">
-                      <div className="flex items-start gap-3">
-                        <span className="w-11 shrink-0 pt-0.5 text-xs tabular-nums text-muted-foreground">{dateLabel}</span>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-3">
-                            <p className="truncate text-sm font-medium">{memory.title || "未命名经历"}</p>
-                            <Badge variant="outline" className={cn("shrink-0 border text-[10px]", color.badge)}>{memory.category}</Badge>
-                          </div>
-                          <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                            {memory.result || memory.content || formatEventDateRange(memory.event_date, memory.event_date_end)}
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
+        </section>
+      ))}
+      {undated.length > 0 && <details className="mt-8 border-t py-5"><summary className="cursor-pointer text-sm text-muted-foreground">日期待补充 · {undated.length} 条</summary><div className="mt-3">{undated.map(memory => <Link className="timeline-entry text-sm" key={memory.id} href={`/memory/${memory.id}`}>{memory.title}</Link>)}</div></details>}
     </section>
   );
 }

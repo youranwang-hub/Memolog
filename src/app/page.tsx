@@ -84,10 +84,10 @@ export default function AuthPage() {
 
   return (
     <div className="flex flex-1 items-center justify-center min-h-screen p-4">
-      <Card className="w-full max-w-sm">
+      <Card className="auth-paper">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Memolog</CardTitle>
-          <CardDescription>你的个人第二大脑</CardDescription>
+          <CardDescription>让每一段经历，有处安放。</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -133,7 +133,7 @@ export default function AuthPage() {
               </p>
             )}
 
-            <Button type="submit" className="w-full" disabled={loading || resetLoading}>
+            <Button type="submit" className="w-full h-10" disabled={loading || resetLoading}>
               {loading ? "处理中..." : isLogin ? "登录" : "注册"}
             </Button>
           </form>

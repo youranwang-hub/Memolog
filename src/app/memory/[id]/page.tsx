@@ -1,4 +1,5 @@
 "use client";
+import { CategoryLabel } from "@/components/memory/category-label";
 import { TagEditor } from "@/components/memory/tag-editor";
 import { normalizeTags, validateMemory } from "@/lib/memory-validation";
 
@@ -11,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -243,7 +244,7 @@ export default function MemoryDetailPage({
   const emotionInfo = EMOTION_MAP[memory.emotion];
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+    <div className="journal-page space-y-8">
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard")}>
           <ArrowLeft className="h-4 w-4 mr-1" />
@@ -255,7 +256,7 @@ export default function MemoryDetailPage({
               编辑
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={() => setShowDelete(true)}>
+          <Button variant="ghost" size="sm" aria-label="删除记忆" onClick={() => setShowDelete(true)}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
@@ -263,80 +264,22 @@ export default function MemoryDetailPage({
 
       {attachmentsError && <p role="alert" className="text-sm text-destructive">图片读取失败，暂时无法修改或删除记忆。<button onClick={() => window.location.reload()} className="underline ml-2">重新加载</button></p>}
       {!editing ? (
-        <Card>
+        <Card className="reading-sheet">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                {formatEventDateRange(memory.event_date, memory.event_date_end)}
-              </span>
-              <span className="text-2xl">{emotionInfo?.emoji}</span>
-            </div>
-            <CardTitle className="text-xl mt-1">{memory.title}</CardTitle>
+            <p className="journal-eyebrow">{formatEventDateRange(memory.event_date, memory.event_date_end)}</p>
+            <h1 className="reading-title">{memory.title}</h1>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-wrap gap-1.5">
-              <Badge variant="secondary" className="text-xs">
-                {memory.category}
-              </Badge>
-              {memory.tags.map((tag) => (
-                <Badge key={tag} variant="outline" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-
-            {memory.result && (
-              <div>
-                <Label className="text-xs text-muted-foreground">成果</Label>
-                <p className="text-sm mt-0.5">{memory.result}</p>
-              </div>
-            )}
-
-            {memory.content && (
-              <div>
-                <Label className="text-xs text-muted-foreground">做了什么</Label>
-                <p className="text-sm mt-0.5 whitespace-pre-wrap leading-relaxed">{memory.content}</p>
-              </div>
-            )}
-
-            {memory.emotion_note && (
-              <div>
-                <Label className="text-xs text-muted-foreground">心情</Label>
-                <p className="text-sm mt-0.5 text-muted-foreground italic">{memory.emotion_note}</p>
-              </div>
-            )}
-
-            {memory.raw_input && (
-              <div className="pt-4 border-t">
-                <Label className="text-xs text-muted-foreground">原始记录</Label>
-                <p className="text-xs mt-0.5 text-muted-foreground/60">{memory.raw_input}</p>
-              </div>
-            )}
-
-            {attachments.length > 0 && (
-              <div className="space-y-2 pt-4 border-t">
-                <Label className="text-xs text-muted-foreground">相关图片</Label>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {attachments.map((attachment) => (
-                    <button
-                      key={attachment.id}
-                      type="button"
-                      onClick={() => setSelectedAttachment(attachment)}
-                      aria-label={`查看图片 ${attachment.sort_order + 1}`}
-                      className="relative block aspect-[4/3] overflow-hidden rounded-md border bg-muted"
-                    >
-                      <Image
-                        src={attachment.url || "/file.svg"}
-                        alt="相关记忆图片"
-                        fill
-                        unoptimized
-                        className="h-full w-full object-cover transition-transform hover:scale-[1.02]"
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+          <CardContent className="space-y-8">
+            {memory.result && <div className="reading-result"><p className="mb-2 text-xs text-muted-foreground">留下的收获</p><p className="text-base leading-8 whitespace-pre-wrap">{memory.result}</p></div>}
+            {memory.content && <p className="reading-body">{memory.content}</p>}
+            {attachments.length > 0 && <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {attachments.map(attachment => <button key={attachment.id} type="button" onClick={() => setSelectedAttachment(attachment)} aria-label={`查看图片 ${attachment.sort_order + 1}`} className="relative aspect-[4/3] overflow-hidden rounded-md bg-muted">
+                <Image src={attachment.url || "/file.svg"} alt="相关记忆图片" fill unoptimized className="object-cover" />
+              </button>)}
+            </div>}
+            {(memory.emotion_note || memory.emotion !== "neutral") && <div className="border-t pt-6 text-sm leading-8 text-muted-foreground"><span className="mr-3 text-xs">当时的心情 · {emotionInfo?.label}</span>{memory.emotion_note && <p className="whitespace-pre-wrap">{memory.emotion_note}</p>}</div>}
+            <div className="flex flex-wrap gap-x-4 gap-y-2 border-t pt-6 text-xs text-muted-foreground"><CategoryLabel category={memory.category} />{memory.tags.map(tag => <span key={tag}># {tag}</span>)}</div>
+            {memory.raw_input && <details className="text-sm text-muted-foreground"><summary className="cursor-pointer text-xs">原始记录</summary><p className="mt-4 whitespace-pre-wrap leading-8">{memory.raw_input}</p></details>}
           </CardContent>
         </Card>
       ) : (
@@ -357,7 +300,7 @@ export default function MemoryDetailPage({
                   <SelectContent>
                     {getCategories([...categories, form.category]).map((c) => (
                       <SelectItem key={c} value={c}>
-                        {c}
+                        <CategoryLabel category={c} />
                       </SelectItem>
                     ))}
                   </SelectContent>

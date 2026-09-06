@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/components/auth/auth-provider";
-import { IdCard, KeyRound, LayoutList, LogOut, Mail, Sparkles, User } from "lucide-react";
+import { KeyRound, LogOut, Mail, User } from "lucide-react";
 import { toast } from "sonner";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -114,20 +114,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="sticky top-0 z-50 border-b bg-background/85 backdrop-blur-sm">
-        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
+      <header className="sticky top-0 z-50 border-b border-border/70 bg-background/95">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 sm:gap-6 min-w-0">
-            <Link href="/dashboard" className="font-semibold text-sm shrink-0">
+            <Link href="/dashboard" className="journal-brand shrink-0">
               Memolog
             </Link>
-            <nav className="flex items-center gap-1">
+            <nav className="journal-nav flex items-center gap-1">
               <Button
                 variant={isMemoryActive ? "secondary" : "ghost"}
                 size="sm"
                 onClick={() => router.push("/dashboard")}
                 aria-label="记忆库"
+                aria-current={isMemoryActive ? "page" : undefined}
               >
-                <LayoutList className="hidden h-4 w-4 sm:inline-block sm:mr-1.5" />
                 <span className="inline">记忆库</span>
               </Button>
               <Button
@@ -135,8 +135,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 size="sm"
                 onClick={() => router.push("/generate")}
                 aria-label="生成"
+                aria-current={isGenerateActive ? "page" : undefined}
               >
-                <Sparkles className="hidden h-4 w-4 sm:inline-block sm:mr-1.5" />
                 <span className="inline">生成</span>
               </Button>
               <Button
@@ -144,8 +144,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 size="sm"
                 onClick={() => router.push("/profile")}
                 aria-label="档案"
+                aria-current={isProfileActive ? "page" : undefined}
               >
-                <IdCard className="hidden h-4 w-4 sm:inline-block sm:mr-1.5" />
                 <span className="inline">档案</span>
               </Button>
             </nav>

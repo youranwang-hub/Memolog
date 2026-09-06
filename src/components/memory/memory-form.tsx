@@ -149,12 +149,12 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
 
   return (
     <>
-      <Card className="bg-card/75 backdrop-blur-sm">
+      <Card className="journal-composer">
         <CardContent className="p-3">
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-3">
             <div className="flex-1">
               <Textarea
-                placeholder="不必纠结取舍，履历素材、成长点滴与生活碎片都值得留存；交由 AI 妥帖整理，珍藏每一段过往。"
+                placeholder="写下此刻，或想起的一段经历。"
                 value={rawInput}
                 onChange={(e) => setRawInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -163,16 +163,25 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
                     handleExtract();
                   }
                 }}
-                rows={2}
+                rows={3}
                 className="resize-none border-0 bg-transparent focus-visible:ring-0 text-sm placeholder:text-muted-foreground/60 p-0"
               />
             </div>
+          </div>
+          <div className="composer-footer">
+          <MemoryImagePicker
+            images={pendingImages}
+            onChange={setPendingImages}
+            onProcessingChange={setProcessingImages}
+            disabled={extracting || saving}
+            compact
+          />
             <Button
               size="sm"
               variant="default"
               onClick={handleExtract}
               disabled={extracting || processingImages || !rawInput.trim()}
-              className="self-end shrink-0"
+              className="h-9 px-4 shrink-0"
             >
               {extracting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -181,20 +190,13 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
               )}
             </Button>
           </div>
-          <MemoryImagePicker
-            images={pendingImages}
-            onChange={setPendingImages}
-            onProcessingChange={setProcessingImages}
-            disabled={extracting || saving}
-            compact
-          />
         </CardContent>
       </Card>
 
-      <Button variant="ghost" size="sm" disabled={!rawInput.trim() || extracting || saving || processingImages} onClick={() => {
+      <Button className="mt-2 text-xs text-muted-foreground" variant="ghost" size="sm" disabled={!rawInput.trim() || extracting || saving || processingImages} onClick={() => {
         setExtracted({ title: rawInput.trim().slice(0, 30), content: rawInput.trim(), result: "", category: categories[0] || "其他", event_date: "未知", event_date_end: null, emotion: "neutral", emotion_note: "", tags: [] });
         setShowEditor(true);
-      }}>手动记录 / 保存原文</Button>
+      }}>直接记录，稍后整理</Button>
       <Dialog open={showEditor} onOpenChange={(open) => {
         if (saving) return;
         setShowEditor(open);

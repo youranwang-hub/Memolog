@@ -85,8 +85,8 @@ export default function GeneratePage() {
   useEffect(() => {
     const controller = new AbortController();
     Promise.resolve(getSupabase().from("memories").select("id").limit(1).abortSignal(controller.signal))
-      .then(({ data, error }) => { if (error) throw error; setHasMemories(Boolean(data?.length)); })
-      .catch(() => toast.error("记忆读取失败，请刷新后重试"))
+      .then(({ data, error }) => { if (controller.signal.aborted) return; if (error) throw error; setHasMemories(Boolean(data?.length)); })
+      .catch(() => { if (!controller.signal.aborted) toast.error("记忆读取失败，请刷新后重试"); })
       .finally(() => { if (!controller.signal.aborted) setLoadingMemories(false); });
     return () => controller.abort();
   }, []);
@@ -260,7 +260,7 @@ export default function GeneratePage() {
   ) : (
     <div className="space-y-2">
       {activeHistory.map((item) => (
-        <div key={item.id} className="rounded-md border bg-card p-3 hover:border-stone-400 transition-colors">
+        <div key={item.id} className="history-entry">
           <div
             role="button"
             tabIndex={0}
@@ -274,7 +274,7 @@ export default function GeneratePage() {
             }}
           >
             <div className="flex items-start justify-between gap-2">
-              <p className="text-sm font-medium leading-snug line-clamp-2">{item.title}</p>
+              <p className="text-sm font-medium leading-relaxed line-clamp-2 hover:text-primary">{item.title}</p>
               <span className="shrink-0 inline-flex items-center text-[11px] text-muted-foreground">
                 <Clock3 className="h-3 w-3 mr-1" />
                 {formatTime(item.created_at)}
@@ -307,9 +307,10 @@ export default function GeneratePage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6">
+    <div className="journal-page generation-paper lg:max-w-5xl lg:w-full">
+      <header className="journal-heading"><p className="journal-eyebrow">从记忆，到文字</p><h1 className="editorial-title">让经历，有新的表达。</h1><p className="journal-subtitle">简历、自我介绍，或一段你正需要的文字。</p></header>
       {unsaved && <div role="alert" className="mb-4 rounded-md border p-3 text-sm">有生成内容尚未保存。<Button variant="outline" onClick={retryHistory} disabled={savingHistory}>重试保存历史</Button></div>}
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_240px] lg:gap-12">
         <div className="min-w-0">
           <Tabs
             value={activeType}
@@ -412,7 +413,7 @@ export default function GeneratePage() {
           </Tabs>
 
           {activeResult && (
-            <Card className="mt-6">
+            <Card className="mt-10 border-0 border-t rounded-none bg-transparent pt-6">
               <CardHeader className="pb-3 flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="text-base">{TYPE_LABELS[activeType]}结果</CardTitle>
@@ -446,7 +447,7 @@ export default function GeneratePage() {
           <div className="mt-3">{historyContent}</div>
         </details>
 
-        <aside className="hidden space-y-3 lg:block">
+        <aside className="generation-history hidden space-y-3 lg:block">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <History className="h-4 w-4 text-muted-foreground" />

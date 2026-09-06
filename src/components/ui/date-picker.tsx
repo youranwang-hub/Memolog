@@ -215,9 +215,9 @@ export function DatePicker({
                   onClick={() => selectDate(date)}
                   className={cn(
                     "mx-auto flex h-8 w-8 items-center justify-center rounded-lg text-xs transition-colors",
-                    selected && "bg-stone-900 font-medium text-white hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-900",
-                    !selected && today && "ring-1 ring-stone-400",
-                    !selected && !unavailable && "hover:bg-stone-100 dark:hover:bg-stone-800",
+                    selected && "bg-primary font-medium text-primary-foreground hover:bg-primary/90",
+                    !selected && today && "ring-1 ring-primary/50",
+                    !selected && !unavailable && "hover:bg-accent",
                     unavailable && "cursor-not-allowed text-muted-foreground/35"
                   )}
                 >

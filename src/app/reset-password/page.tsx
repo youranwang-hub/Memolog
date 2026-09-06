@@ -68,7 +68,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="flex flex-1 items-center justify-center min-h-screen p-4">
-      <Card className="w-full max-w-sm">
+      <Card className="auth-paper">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">重置密码</CardTitle>
           <CardDescription>邮箱验证完成后，设置一个新的登录密码</CardDescription>

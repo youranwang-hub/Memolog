@@ -115,7 +115,7 @@ export function MemoryImagePicker({
               type="button"
               onClick={() => removeImage(image.id)}
               disabled={disabled || processing}
-              className="absolute right-1 top-1 rounded-sm bg-background/90 p-0.5 text-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus:opacity-100 disabled:hidden"
+              className="absolute right-1 top-1 rounded-sm bg-background/90 p-0.5 text-foreground opacity-100 sm:opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus:opacity-100 disabled:hidden"
               aria-label="删除图片"
             >
               <X className="h-3 w-3" />
@@ -125,13 +125,14 @@ export function MemoryImagePicker({
         <Button
           type="button"
           variant="outline"
-          size="icon"
-          className="h-16 w-16 shrink-0 border-dashed"
+          size={compact ? "sm" : "icon"}
+          className={compact ? "h-9 w-auto gap-2 border-transparent bg-transparent px-0 text-xs text-muted-foreground" : "h-16 w-16 shrink-0 border-dashed"}
           onClick={() => inputRef.current?.click()}
           disabled={disabled || processing || images.length >= maxImages}
           aria-label="添加图片"
         >
           <ImagePlus className="h-4 w-4" />
+          {compact && <span>{processing ? "正在优化图片…" : "添加图片"}</span>}
         </Button>
       </div>
       <input

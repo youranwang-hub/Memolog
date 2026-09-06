@@ -1,5 +1,6 @@
 "use client";
 
+import { getCategoryColor } from "@/lib/category-colors";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -100,11 +101,12 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-      <div>
-        <h1 className="text-lg font-semibold">我的档案</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          这些信息会在生成简历、自我介绍和自定义内容时作为背景使用。
+    <div className="journal-page profile-paper">
+      <div className="journal-heading">
+        <p className="journal-eyebrow">关于自己</p>
+        <h1 className="editorial-title">让文字，更像你。</h1>
+        <p className="journal-subtitle">
+          你的背景与偏好，会成为生成文字时的参照。
         </p>
       </div>
 
@@ -162,7 +164,7 @@ export default function ProfilePage() {
           {profile.custom_categories.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {profile.custom_categories.map((category) => (
-                <Badge key={category} variant="secondary" className="gap-1 py-1 pl-2">
+                <Badge key={category} variant="secondary" className={`category-label gap-1 py-1 pl-2 ${getCategoryColor(category).badge}`}>
                   {category}
                   <button
                     type="button"
