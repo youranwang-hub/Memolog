@@ -24,6 +24,7 @@ interface Props {
   disabled?: boolean;
   compact?: boolean;
   maxImages?: number;
+  onProcessingChange?: (processing: boolean) => void;
 }
 
 export function MemoryImagePicker({
@@ -32,9 +33,12 @@ export function MemoryImagePicker({
   disabled = false,
   compact = false,
   maxImages = MAX_MEMORY_IMAGES,
+  onProcessingChange,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const imagesRef = useRef(images);
+  const mounted = useRef(false);
+  const busy = useRef(false);
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
@@ -47,11 +51,12 @@ export function MemoryImagePicker({
   }, [images]);
 
   useEffect(() => {
-    return () => imagesRef.current.forEach((image) => URL.revokeObjectURL(image.previewUrl));
+    mounted.current = true;
+    return () => { mounted.current = false; imagesRef.current.forEach((image) => URL.revokeObjectURL(image.previewUrl)); };
   }, []);
 
   async function addFiles(files: File[]) {
-    if (files.length === 0) return;
+    if (files.length === 0 || busy.current) return;
     if (images.length + files.length > maxImages) {
       toast.error(`每条记忆最多添加 ${MAX_MEMORY_IMAGES} 张图片`);
       return;
@@ -59,10 +64,14 @@ export function MemoryImagePicker({
 
     try {
       validateMemoryImageFiles(files);
+      busy.current = true;
       setProcessing(true);
+      onProcessingChange?.(true);
       const compressedFiles = await compressMemoryImages(files);
+      if (!mounted.current) return;
+      if (imagesRef.current.length + compressedFiles.length > maxImages) throw new Error("图片数量已变化，请重新选择");
       onChange([
-        ...images,
+        ...imagesRef.current,
         ...compressedFiles.map((file) => ({
           id: crypto.randomUUID(),
           file,
@@ -72,7 +81,8 @@ export function MemoryImagePicker({
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "图片无法添加");
     } finally {
-      setProcessing(false);
+      busy.current = false;
+      if (mounted.current) { setProcessing(false); onProcessingChange?.(false); }
     }
   }
 
@@ -104,7 +114,7 @@ export function MemoryImagePicker({
             <button
               type="button"
               onClick={() => removeImage(image.id)}
-              disabled={disabled}
+              disabled={disabled || processing}
               className="absolute right-1 top-1 rounded-sm bg-background/90 p-0.5 text-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus:opacity-100 disabled:hidden"
               aria-label="删除图片"
             >

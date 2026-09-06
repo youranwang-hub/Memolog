@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
+import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
 
 interface AuthContextType {
@@ -34,43 +35,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    getSupabase().auth.getSession().then(({ data: { session }, error }) => {
-      console.log("[Auth] getSession:", { hasSession: !!session, userId: session?.user?.id, error: error?.message });
+    let active = true;
+    getSupabase().auth.getSession().then(({ data: { session } }) => {
+      if (!active) return;
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-    });
+    }).catch(() => { if (active) setLoading(false); });
 
     const {
       data: { subscription },
     } = getSupabase().auth.onAuthStateChange((event, session) => {
-      console.log("[Auth] onAuthStateChange:", event, { hasSession: !!session });
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => { active = false; subscription.unsubscribe(); };
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    console.log("[Auth] signIn called:", email);
-    const { data, error } = await getSupabase().auth.signInWithPassword({ email, password });
-    console.log("[Auth] signIn result:", { hasSession: !!data.session, userId: data.user?.id, error: error?.message });
+    const { error } = await getSupabase().auth.signInWithPassword({ email, password }).catch(() => ({ error: { message: "登录失败，请检查网络后重试" } }));
     if (error) return { error: error.message };
     return {};
   }, []);
 
   const signUp = useCallback(async (email: string, password: string) => {
-    console.log("[Auth] signUp called:", email);
     const { error, data } = await getSupabase().auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
-    });
-    console.log("[Auth] signUp result:", { userId: data.user?.id, identities: data.user?.identities?.length, error: error?.message });
+    }).catch(() => ({ data: { user: null }, error: { message: "注册失败，请检查网络后重试" } }));
     if (error) return { error: error.message };
 
     if (data.user?.identities?.length === 0) {
@@ -87,10 +84,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { error: verifyError } = await getSupabase().auth.signInWithPassword({
         email,
         password: currentPassword,
-      });
+      }).catch(() => ({ error: { message: "验证失败，请检查网络" } }));
       if (verifyError) return { error: "原密码不正确，请重新输入" };
 
-      const { error } = await getSupabase().auth.updateUser({ password: newPassword });
+      const { error } = await getSupabase().auth.updateUser({ password: newPassword }).catch(() => ({ error: { message: "修改失败，请检查网络后重试" } }));
       if (error) return { error: error.message };
       return {};
     },
@@ -100,13 +97,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const sendPasswordResetEmail = useCallback(async (email: string) => {
     const { error } = await getSupabase().auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
-    });
+    }).catch(() => ({ error: { message: "发送失败，请检查网络后重试" } }));
     if (error) return { error: error.message };
     return {};
   }, []);
 
   const signOut = useCallback(async () => {
-    await getSupabase().auth.signOut();
+    const { error } = await getSupabase().auth.signOut().catch(() => ({ error: new Error("退出失败") }));
+    if (error) { toast.error("退出失败，请重试"); return; }
     router.push("/");
   }, [router]);
 

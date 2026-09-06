@@ -1,4 +1,7 @@
 "use client";
+import { TagEditor } from "@/components/memory/tag-editor";
+import { normalizeTags, validateMemory } from "@/lib/memory-validation";
+
 
 import { useState, useEffect, use } from "react";
 import Image from "next/image";
@@ -30,7 +33,7 @@ import type { Memory, Category, Emotion } from "@/lib/types";
 import { EMOTIONS, EMOTION_MAP } from "@/lib/types";
 import { getMemory, updateMemory, deleteMemory } from "@/lib/memories";
 import { normalizeEventDate, formatEventDateRange } from "@/lib/dates";
-import { DatePicker } from "@/components/ui/date-picker";
+import { DateFields } from "@/components/memory/date-fields";
 import { useAuth } from "@/components/auth/auth-provider";
 import { fetchProfile } from "@/lib/profile";
 import { getCategories } from "@/lib/types";
@@ -41,18 +44,11 @@ import {
   deleteMemoryAttachments,
   fetchMemoryAttachments,
   uploadMemoryAttachments,
+  MAX_MEMORY_IMAGES,
 } from "@/lib/memory-attachments";
 
 type DateMode = "single" | "range";
 type AttachmentPreview = MemoryAttachment & { url: string };
-const MAX_TAGS = 8;
-const MAX_TAG_LENGTH = 16;
-
-function normalizeTags(tags: string[]) {
-  return Array.from(
-    new Set(tags.map((tag) => tag.trim().replace(/\s+/g, " ")).filter(Boolean))
-  ).slice(0, MAX_TAGS);
-}
 
 export default function MemoryDetailPage({
   params,
@@ -63,15 +59,17 @@ export default function MemoryDetailPage({
   const { user } = useAuth();
   const router = useRouter();
   const [memory, setMemory] = useState<Memory | null>(null);
+  const [loadError, setLoadError] = useState("");
+  const [attachmentsError, setAttachmentsError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [dateMode, setDateMode] = useState<DateMode>("single");
   const [categories, setCategories] = useState<string[]>(getCategories());
-  const [tagInput, setTagInput] = useState("");
   const [attachments, setAttachments] = useState<AttachmentPreview[]>([]);
   const [selectedAttachment, setSelectedAttachment] = useState<AttachmentPreview | null>(null);
+  const [processingImages, setProcessingImages] = useState(false);
   const [pendingImages, setPendingImages] = useState<PendingMemoryImage[]>([]);
   const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>([]);
 
@@ -107,6 +105,7 @@ export default function MemoryDetailPage({
           raw_input: data.raw_input,
         });
       })
+      .catch(() => setLoadError("记忆读取失败，请刷新重试"))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -118,7 +117,7 @@ export default function MemoryDetailPage({
         );
         setAttachments(previews);
       })
-      .catch(() => setAttachments([]));
+      .catch(() => setAttachmentsError(true));
   }, [id]);
 
   useEffect(() => {
@@ -129,16 +128,21 @@ export default function MemoryDetailPage({
   }, [user]);
 
   async function handleSave() {
+    if (saving || processingImages || attachmentsError) return;
     setSaving(true);
+    let textSaved = false;
     try {
       const updated = await updateMemory(id, {
-        ...form,
+        ...validateMemory({ ...form, event_date_end: dateMode === "range" ? form.event_date_end : null }),
+        raw_input: form.raw_input,
         event_date: normalizeEventDate(form.event_date),
         event_date_end:
           dateMode === "range" && form.event_date_end
             ? normalizeEventDate(form.event_date_end)
             : null,
       });
+      setMemory(updated);
+      textSaved = true;
       const attachmentsToDelete = attachments.filter((attachment) =>
         removedAttachmentIds.includes(attachment.id)
       );
@@ -148,6 +152,8 @@ export default function MemoryDetailPage({
 
       if (attachmentsToDelete.length > 0) {
         await deleteMemoryAttachments(attachmentsToDelete);
+        setAttachments(remainingAttachments);
+        setRemovedAttachmentIds([]);
       }
 
       const uploadedAttachments =
@@ -156,13 +162,14 @@ export default function MemoryDetailPage({
               memoryId: id,
               userId: user.id,
               files: pendingImages.map((image) => image.file),
-              startOrder: remainingAttachments.length,
+              startOrder: Math.max(-1, ...remainingAttachments.map(item => item.sort_order)) + 1,
             })
           : [];
+      setPendingImages([]);
       const uploadedPreviews = await Promise.all(
         uploadedAttachments.map(async (attachment) => ({
           ...attachment,
-          url: await createMemoryImageUrl(attachment.storage_path),
+          url: await createMemoryImageUrl(attachment.storage_path).catch(() => { setAttachmentsError(true); return ""; }),
         }))
       );
 
@@ -172,41 +179,26 @@ export default function MemoryDetailPage({
       setRemovedAttachmentIds([]);
       setEditing(false);
       toast.success("已更新");
-    } catch {
-      toast.error("保存失败");
+    } catch (error) {
+      toast.error(textSaved ? "正文已保存，图片更新未完成。请重试保存图片。" : error instanceof Error ? error.message : "保存失败");
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete() {
+    if (saving || processingImages || attachmentsError) return;
+    setSaving(true);
     try {
       await deleteMemoryAttachments(attachments);
       await deleteMemory(id);
       toast.success("已删除");
       router.push("/dashboard");
     } catch {
-      toast.error("删除失败");
-    }
+      toast.error("删除失败，请重试");
+    } finally { setSaving(false); }
   }
 
-  function addTags(rawValue = tagInput) {
-    const candidates = rawValue
-      .split(/[,，\n]/)
-      .map((tag) => tag.slice(0, MAX_TAG_LENGTH));
-    const nextTags = normalizeTags([...form.tags, ...candidates]);
-
-    if (nextTags.length === form.tags.length && candidates.some((tag) => tag.trim())) {
-      toast.error(`每条记忆最多 ${MAX_TAGS} 个标签`);
-    }
-
-    setForm({ ...form, tags: nextTags });
-    setTagInput("");
-  }
-
-  function removeTag(tag: string) {
-    setForm({ ...form, tags: form.tags.filter((item) => item !== tag) });
-  }
 
   function startEditing() {
     setPendingImages([]);
@@ -215,6 +207,11 @@ export default function MemoryDetailPage({
   }
 
   function cancelEditing() {
+    if (saving) return;
+    if (memory) {
+      setForm({ ...memory, event_date_end: memory.event_date_end ?? "", tags: normalizeTags(memory.tags ?? []) });
+      setDateMode(memory.event_date_end ? "range" : "single");
+    }
     setPendingImages([]);
     setRemovedAttachmentIds([]);
     setEditing(false);
@@ -235,7 +232,7 @@ export default function MemoryDetailPage({
   if (!memory) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-12 text-center">
-        <p className="text-muted-foreground">记录不存在</p>
+        <p className="text-muted-foreground">{loadError || "记录不存在"}</p>
         <Button variant="ghost" className="mt-4" onClick={() => router.push("/dashboard")}>
           返回记忆库
         </Button>
@@ -264,6 +261,7 @@ export default function MemoryDetailPage({
         </div>
       </div>
 
+      {attachmentsError && <p role="alert" className="text-sm text-destructive">图片读取失败，暂时无法修改或删除记忆。<button onClick={() => window.location.reload()} className="underline ml-2">重新加载</button></p>}
       {!editing ? (
         <Card>
           <CardHeader>
@@ -328,7 +326,7 @@ export default function MemoryDetailPage({
                       className="relative block aspect-[4/3] overflow-hidden rounded-md border bg-muted"
                     >
                       <Image
-                        src={attachment.url}
+                        src={attachment.url || "/file.svg"}
                         alt="相关记忆图片"
                         fill
                         unoptimized
@@ -344,50 +342,7 @@ export default function MemoryDetailPage({
       ) : (
         <Card>
           <CardContent className="p-4 space-y-4">
-              {/* 日期模式切换 + 日期选择 */}
-              <div className="space-y-2">
-                <Label className="text-xs">日期</Label>
-                <div className="flex gap-1.5">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={dateMode === "single" ? "default" : "outline"}
-                    onClick={() => setDateMode("single")}
-                    className="text-xs h-7"
-                  >
-                    单日
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={dateMode === "range" ? "default" : "outline"}
-                    onClick={() => setDateMode("range")}
-                    className="text-xs h-7"
-                  >
-                    阶段
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <DatePicker
-                    value={form.event_date}
-                    onChange={(val) => setForm({ ...form, event_date: val })}
-                  />
-                  {dateMode === "range" && (
-                    <DatePicker
-                      value={form.event_date_end}
-                      onChange={(val) => setForm({ ...form, event_date_end: val })}
-                      label="结束日期"
-                      minDate={form.event_date || undefined}
-                    />
-                  )}
-                </div>
-                {dateMode === "range" && form.event_date_end && (
-                  <p className="text-xs text-muted-foreground">
-                    阶段：{formatEventDateRange(form.event_date, form.event_date_end)}
-                  </p>
-                )}
-              </div>
+              <DateFields start={form.event_date} end={form.event_date_end} mode={dateMode} onModeChange={setDateMode} onChange={(field, value) => setForm({ ...form, [field]: value })} />
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -445,7 +400,7 @@ export default function MemoryDetailPage({
               <div className="flex items-center justify-between gap-3">
                 <Label className="text-xs">相关图片</Label>
                 <span className="text-[11px] text-muted-foreground">
-                  {attachments.length - removedAttachmentIds.length + pendingImages.length}/6
+                  {attachments.length - removedAttachmentIds.length + pendingImages.length}/{MAX_MEMORY_IMAGES}
                 </span>
               </div>
               {attachments.some((attachment) => !removedAttachmentIds.includes(attachment.id)) && (
@@ -455,7 +410,7 @@ export default function MemoryDetailPage({
                     .map((attachment) => (
                       <div key={attachment.id} className="group relative h-16 w-16 overflow-hidden rounded-md border bg-muted">
                         <Image
-                          src={attachment.url}
+                          src={attachment.url || "/file.svg"}
                           alt="已保存的相关图片"
                           width={64}
                           height={64}
@@ -477,63 +432,14 @@ export default function MemoryDetailPage({
               <MemoryImagePicker
                 images={pendingImages}
                 onChange={setPendingImages}
-                disabled={saving || attachments.length - removedAttachmentIds.length + pendingImages.length >= 6}
+            onProcessingChange={setProcessingImages}
+                disabled={saving || attachments.length - removedAttachmentIds.length + pendingImages.length >= MAX_MEMORY_IMAGES}
                 compact
-                maxImages={6 - (attachments.length - removedAttachmentIds.length)}
+                maxImages={MAX_MEMORY_IMAGES - (attachments.length - removedAttachmentIds.length)}
               />
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <Label className="text-xs">标签</Label>
-                <span className="text-[11px] text-muted-foreground">
-                  {form.tags.length}/{MAX_TAGS}
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {form.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="gap-1 py-1 pl-2">
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => removeTag(tag)}
-                      className="rounded-sm hover:text-destructive"
-                      aria-label={`删除标签 ${tag}`}
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                {form.tags.length === 0 && (
-                  <span className="text-xs text-muted-foreground">还没有标签</span>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  value={tagInput}
-                  onChange={(event) => setTagInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      addTags();
-                    }
-                  }}
-                  placeholder="输入标签，可用逗号分隔"
-                  maxLength={MAX_TAG_LENGTH * 2 + 1}
-                  className="h-9"
-                  disabled={form.tags.length >= MAX_TAGS}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addTags()}
-                  disabled={!tagInput.trim() || form.tags.length >= MAX_TAGS}
-                >
-                  添加
-                </Button>
-              </div>
-            </div>
+            <TagEditor tags={form.tags} onChange={(tags) => setForm({ ...form, tags })} disabled={saving || processingImages} />
 
             <div className="space-y-1.5">
               <Label className="text-xs">情绪</Label>
@@ -564,7 +470,7 @@ export default function MemoryDetailPage({
               <Button variant="ghost" size="sm" onClick={cancelEditing}>
                 取消
               </Button>
-              <Button size="sm" onClick={handleSave} disabled={saving}>
+              <Button size="sm" onClick={handleSave} disabled={saving || processingImages || attachmentsError}>
                 {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
                 保存
               </Button>
@@ -603,7 +509,7 @@ export default function MemoryDetailPage({
             <Button variant="ghost" size="sm" onClick={() => setShowDelete(false)}>
               取消
             </Button>
-            <Button variant="destructive" size="sm" onClick={handleDelete}>
+            <Button variant="destructive" size="sm" onClick={handleDelete} disabled={saving || processingImages || attachmentsError}>
               确认删除
             </Button>
           </DialogFooter>

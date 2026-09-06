@@ -1,4 +1,5 @@
 "use client";
+import { MIN_PASSWORD_LENGTH } from "@/lib/auth-rules";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -31,14 +32,17 @@ export default function ResetPasswordPage() {
       setCheckingSession(false);
     }
   
-    checkSession();
+    void checkSession().catch(() => {
+      setErrorMsg("验证链接检查失败，请检查网络并重新打开邮件链接");
+      setCheckingSession(false);
+    });
 }, []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMsg("");
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
       setErrorMsg("新密码至少需要 6 位");
       return;
     }
@@ -49,7 +53,7 @@ export default function ResetPasswordPage() {
     }
 
     setLoading(true);
-    const { error } = await getSupabase().auth.updateUser({ password: newPassword });
+    const { error } = await getSupabase().auth.updateUser({ password: newPassword }).catch(() => ({ error: { message: "修改失败，请检查网络后重试" } }));
     setLoading(false);
 
     if (error) {
@@ -58,7 +62,7 @@ export default function ResetPasswordPage() {
     }
 
     toast.success("密码已重置，请使用新密码登录");
-    await getSupabase().auth.signOut();
+    await getSupabase().auth.signOut().catch(() => undefined);
     router.push("/");
   }
 
@@ -85,7 +89,7 @@ export default function ResetPasswordPage() {
                   value={newPassword}
                   onChange={(event) => setNewPassword(event.target.value)}
                   required
-                  minLength={6}
+                  minLength={MIN_PASSWORD_LENGTH}
                 />
               </div>
               <div className="space-y-2">
@@ -96,7 +100,7 @@ export default function ResetPasswordPage() {
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
                   required
-                  minLength={6}
+                  minLength={MIN_PASSWORD_LENGTH}
                 />
               </div>
 

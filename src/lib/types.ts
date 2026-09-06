@@ -77,9 +77,8 @@ export type GeneratedHistoryInput = Omit<GeneratedHistory, "id" | "created_at">;
 export const DEFAULT_CATEGORIES = ["竞赛", "项目", "实习", "课程", "生活", "技能", "其他"] as const;
 
 export function getCategories(categories?: string[]) {
-  return Array.from(
-    new Set((categories ?? DEFAULT_CATEGORIES).map((category) => category.trim()).filter(Boolean))
-  );
+  const values = Array.from(new Set((categories ?? DEFAULT_CATEGORIES).map(category => category.trim()).filter(Boolean)));
+  return values.length ? values : ["其他"];
 }
 
 export const EMOTIONS: { value: Emotion; label: string; emoji: string }[] = [

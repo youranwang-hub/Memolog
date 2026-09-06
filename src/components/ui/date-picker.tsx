@@ -5,14 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { CalendarDays, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatEventDate } from "@/lib/dates";
+import { parseEventDay, formatEventDate } from "@/lib/dates";
 
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
 
 function toDate(value?: string) {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day);
+  return parseEventDay(value);
 }
 
 function toValue(date: Date) {
@@ -27,7 +26,7 @@ function todayValue() {
 }
 
 function monthFrom(value?: string) {
-  const date = toDate(value);
+  const date = parseEventDay(value);
   const now = new Date();
   return new Date(date?.getFullYear() ?? now.getFullYear(), date?.getMonth() ?? now.getMonth(), 1);
 }
@@ -120,7 +119,7 @@ export function DatePicker({
           aria-expanded={open}
         >
           <span className={cn("truncate", !selectedDate && "text-muted-foreground")}>
-            {selectedDate ? formatEventDate(value) : "选择日期"}
+            {selectedDate || monthOnly ? formatEventDate(value) : "选择日期"}
           </span>
           <CalendarDays className="ml-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         </button>

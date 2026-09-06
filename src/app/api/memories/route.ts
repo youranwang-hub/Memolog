@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-function getServerSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-}
+import { requireUser } from "@/lib/api-auth";
+import { validateMemory } from "@/lib/memory-validation";
 
 export async function GET(request: Request) {
   try {
-    const supabase = getServerSupabase();
+    const auth = await requireUser(request);
+    if (auth.error) return auth.error;
+    const { supabase } = auth;
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
     const emotion = searchParams.get("emotion");
@@ -24,16 +20,16 @@ export async function GET(request: Request) {
     if (emotion && emotion !== "all") {
       query = query.eq("emotion", emotion);
     }
-    if (search) {
-      query = query.or(
-        `title.ilike.%${search}%,content.ilike.%${search}%,tags.cs.{${search}}`
-      );
-    }
+    const page = Math.max(0, Number(searchParams.get("page")) || 0);
+    query = query.order("id").range(page * 100, page * 100 + 99);
 
     const { data, error } = await query;
     if (error) throw error;
 
-    return NextResponse.json({ memories: data ?? [] });
+    const term = search?.toLocaleLowerCase();
+    const rows = data ?? [];
+    const filtered = term ? rows.filter(memory => [memory.title, memory.content, ...(memory.tags ?? [])].some(value => String(value).toLocaleLowerCase().includes(term))) : rows;
+    return NextResponse.json({ memories: filtered, hasMore: rows.length === 100 });
   } catch (error) {
     console.error("GET memories error:", error);
     return NextResponse.json({ error: "获取记录失败" }, { status: 500 });
@@ -42,10 +38,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const supabase = getServerSupabase();
+    const auth = await requireUser(request);
+    if (auth.error) return auth.error;
+    const { supabase, user } = auth;
     const body = await request.json();
 
-    const { data, error } = await supabase.from("memories").insert(body).select().single();
+    const { data, error } = await supabase.from("memories").insert({ ...validateMemory(body), user_id: user.id, raw_input: typeof body.raw_input === "string" ? body.raw_input.slice(0, 5000) : "" }).select().single();
 
     if (error) throw error;
 

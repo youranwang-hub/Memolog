@@ -1,4 +1,5 @@
 "use client";
+import { MIN_PASSWORD_LENGTH } from "@/lib/auth-rules";
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -122,7 +123,7 @@ export default function AuthPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={MIN_PASSWORD_LENGTH}
               />
             </div>
 

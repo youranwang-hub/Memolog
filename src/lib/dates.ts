@@ -3,48 +3,38 @@ export function currentEventMonth() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
-/**
- * 标准化 event_date：尽可能保留 yyyy-MM-dd，
- * 只有年月时返回 yyyy-MM，完全无法解析才返回 fallback。
- */
-export function normalizeEventDate(
-  value: unknown,
-  fallback: string = currentEventMonth(),
-): string {
+/** Preserve unknown dates and reject impossible calendar dates. */
+export function normalizeEventDate(value: unknown, fallback = "未知"): string {
   if (typeof value !== "string") return fallback;
+  const match = value.trim().match(/^(\d{4})[-/.年](\d{1,2})(?:[-/.月](\d{1,2})日?)?月?$/);
+  if (!match) return fallback;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = match[3] ? Number(match[3]) : null;
+  if (year < 1000 || month < 1 || month > 12) return fallback;
+  if (day !== null && (day < 1 || day > new Date(year, month, 0).getDate())) return fallback;
+  return `${year}-${String(month).padStart(2, "0")}${day === null ? "" : `-${String(day).padStart(2, "0")}`}`;
+}
 
-  const trimmed = value.trim();
-  if (!trimmed || trimmed === "未知") return fallback;
+export function parseEventDay(value?: string | null): Date | null {
+  const normalized = normalizeEventDate(value);
+  if (normalized === "未知") return null;
+  const [year, month, day = 1] = normalized.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
 
-  // 已经是 yyyy-MM-dd 或 yyyy-MM → 直接返回（截取前10位防止脏数据）
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return trimmed.slice(0, 10);
+export function validateDateRange(start: unknown, end: unknown) {
+  for (const value of [start, end]) {
+    if (value && value !== "未知" && normalizeEventDate(value) === "未知") {
+      throw new Error("请输入有效日期");
+    }
   }
-  if (/^\d{4}-\d{2}$/.test(trimmed)) {
-    return trimmed;
+  const from = normalizeEventDate(start);
+  const to = normalizeEventDate(end);
+  if (to !== "未知" && from === "未知") throw new Error("请先选择开始日期");
+  if (to !== "未知" && from !== "未知" && (from.length === 7 || to.length === 7 ? to.slice(0, 7) < from.slice(0, 7) : to < from)) {
+    throw new Error("结束日期不能早于开始日期");
   }
-
-  // 尝试从各种中文/点号格式提取年月日
-  // 匹配 yyyy-MM-dd / yyyy/MM/dd / yyyy.MM.dd
-  const fullMatch = trimmed.match(
-    /(\d{4})\D{0,3}(\d{1,2})\D{0,3}(\d{1,2})/,
-  );
-  if (fullMatch) {
-    const year = Number(fullMatch[1]);
-    const month = Math.max(1, Math.min(12, Number(fullMatch[2])));
-    const day = Math.max(1, Math.min(31, Number(fullMatch[3])));
-    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  }
-
-  // 只有年月（已在前面的正则被 match 捕获，这里是备用）
-  const monthMatch = trimmed.match(/(\d{4})\D{0,3}(\d{1,2})/);
-  if (monthMatch) {
-    const year = Number(monthMatch[1]);
-    const month = Math.max(1, Math.min(12, Number(monthMatch[2])));
-    return `${year}-${String(month).padStart(2, "0")}`;
-  }
-
-  return fallback;
 }
 
 /** 从 event_date 提取 yyyy-MM（用于简历等场景） */

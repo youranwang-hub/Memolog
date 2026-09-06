@@ -1,6 +1,10 @@
 import { getSupabase } from "@/lib/supabase";
 import { DEFAULT_CATEGORIES, type Profile, type ProfileInput } from "@/lib/types";
 
+function isSchemaCompatibilityError(error: { code?: string }) {
+  return ["42P01", "42703", "PGRST204", "PGRST205"].includes(error.code ?? "");
+}
+
 export function createEmptyProfile(userId: string, email?: string): ProfileInput {
   return {
     user_id: userId,
@@ -58,6 +62,8 @@ export async function fetchProfile(userId: string) {
     .eq("user_id", userId)
     .maybeSingle();
 
+  if (error && !isSchemaCompatibilityError(error)) throw error;
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -110,6 +116,7 @@ export async function saveProfile(profile: ProfileInput) {
     .single();
 
   if (!error) return data as Profile;
+  if (!isSchemaCompatibilityError(error)) throw error;
 
   const { error: metadataError } = await supabase.auth.updateUser({
     data: {

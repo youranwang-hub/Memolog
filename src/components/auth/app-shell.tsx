@@ -1,6 +1,7 @@
 "use client";
+import { MIN_PASSWORD_LENGTH } from "@/lib/auth-rules";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -29,8 +30,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [passwordError, setPasswordError] = useState("");
+  const accountMenuRef = useRef<HTMLDivElement>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
+  useEffect(() => {
+    function dismiss(event: PointerEvent) { if (!accountMenuRef.current?.contains(event.target as Node)) setAccountMenuOpen(false); }
+    function escape(event: KeyboardEvent) { if (event.key === "Escape") setAccountMenuOpen(false); }
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("pointerdown", dismiss); document.removeEventListener("keydown", escape); };
+  }, []);
   useEffect(() => {
     if (!loading && !user) {
       window.location.href = "/";
@@ -60,7 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     event.preventDefault();
     setPasswordError("");
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
       setPasswordError("新密码至少需要 6 位");
       return;
     }
@@ -118,8 +127,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onClick={() => router.push("/dashboard")}
                 aria-label="记忆库"
               >
-                <LayoutList className="h-4 w-4 sm:mr-1.5" />
-                <span className="hidden sm:inline">记忆库</span>
+                <LayoutList className="hidden h-4 w-4 sm:inline-block sm:mr-1.5" />
+                <span className="inline">记忆库</span>
               </Button>
               <Button
                 variant={isGenerateActive ? "secondary" : "ghost"}
@@ -127,8 +136,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onClick={() => router.push("/generate")}
                 aria-label="生成"
               >
-                <Sparkles className="h-4 w-4 sm:mr-1.5" />
-                <span className="hidden sm:inline">生成</span>
+                <Sparkles className="hidden h-4 w-4 sm:inline-block sm:mr-1.5" />
+                <span className="inline">生成</span>
               </Button>
               <Button
                 variant={isProfileActive ? "secondary" : "ghost"}
@@ -136,13 +145,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onClick={() => router.push("/profile")}
                 aria-label="档案"
               >
-                <IdCard className="h-4 w-4 sm:mr-1.5" />
-                <span className="hidden sm:inline">档案</span>
+                <IdCard className="hidden h-4 w-4 sm:inline-block sm:mr-1.5" />
+                <span className="inline">档案</span>
               </Button>
             </nav>
           </div>
 
-          <div className="relative shrink-0">
+          <div ref={accountMenuRef} className="relative shrink-0">
             <Button
               type="button"
               variant="ghost"
@@ -213,7 +222,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
                 required
-                minLength={6}
+                minLength={MIN_PASSWORD_LENGTH}
               />
             </div>
             <div className="space-y-2">
@@ -224,7 +233,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 required
-                minLength={6}
+                minLength={MIN_PASSWORD_LENGTH}
               />
             </div>
 

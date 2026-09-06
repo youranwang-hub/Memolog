@@ -6,21 +6,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getCategoryColor } from "@/lib/category-colors";
-import { formatEventDateRange } from "@/lib/dates";
+import { parseEventDay, formatEventDateRange } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { Memory } from "@/lib/types";
-
-function parseEventDay(value?: string | null) {
-  if (!value || value === "未知") return null;
-  const match = value.match(/^(\d{4})-(\d{2})(?:-(\d{2}))?$/);
-  if (!match) return null;
-
-  const year = Number(match[1]);
-  const month = Number(match[2]) - 1;
-  const day = match[3] ? Number(match[3]) : 1;
-  const date = new Date(year, month, day);
-  return date.getFullYear() === year && date.getMonth() === month && date.getDate() === day ? date : null;
-}
 
 function getYears(memories: Memory[]) {
   const years = new Set<number>();
@@ -47,11 +35,13 @@ function formatTimelineDate(memory: Memory) {
   return `${startLabel}–${endLabel}`;
 }
 
-export function MemoryHeatmap({ memories }: { memories: Memory[] }) {
+export function MemoryTimeline({ memories }: { memories: Memory[] }) {
   const years = useMemo(() => getYears(memories), [memories]);
   const currentYear = new Date().getFullYear();
   const preferredYear = years.includes(currentYear) ? currentYear : (years[0] ?? currentYear);
-  const [year, setYear] = useState(preferredYear);
+  const [selectedYear, setYear] = useState(preferredYear);
+  const year = years.includes(selectedYear) ? selectedYear : preferredYear;
+  const undated = memories.filter(memory => !parseEventDay(memory.event_date));
   const previousYear = years.find((value) => value < year);
   const nextYear = years.slice().reverse().find((value) => value > year && value <= currentYear);
   const monthGroups = useMemo(() => {
@@ -144,6 +134,7 @@ export function MemoryHeatmap({ memories }: { memories: Memory[] }) {
         </div>
       </div>
 
+      {undated.length > 0 && <details className="mt-4 rounded-md border p-3"><summary className="cursor-pointer text-sm">日期待补充 · {undated.length} 条</summary><div className="mt-2 space-y-2">{undated.map(memory => <Link className="block text-sm underline" key={memory.id} href={`/memory/${memory.id}`}>{memory.title}</Link>)}</div></details>}
       {monthGroups.length === 0 ? (
         <div className="py-14 text-center text-sm text-muted-foreground">这一年还没有可回望的经历。</div>
       ) : (

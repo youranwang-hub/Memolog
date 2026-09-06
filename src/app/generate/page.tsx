@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,14 +11,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MarkdownContent } from "@/components/ui/markdown-content";
 import { Clock3, Copy, History, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { getAuthHeaders } from "@/lib/api-client";
+import { fetchWithAuth } from "@/lib/api-client";
 import { useAuth } from "@/components/auth/auth-provider";
-import type { GeneratedHistory, GenerateType, Memory } from "@/lib/types";
-import { fetchMemories } from "@/lib/memories";
+import type { GeneratedHistory, GenerateType } from "@/lib/types";
+import { getSupabase } from "@/lib/supabase";
 import {
   createGeneratedHistory,
   deleteGeneratedHistory,
   fetchGeneratedHistories,
+  getGeneratedHistory,
+  HISTORY_PAGE_SIZE,
 } from "@/lib/generated-history";
 
 const TYPE_LABELS: Record<GenerateType, string> = {
@@ -54,14 +56,23 @@ function formatTime(value: string) {
 
 export default function GeneratePage() {
   const { user } = useAuth();
-  const [memories, setMemories] = useState<Memory[]>([]);
+  const [hasMemories, setHasMemories] = useState(false);
   const [loadingMemories, setLoadingMemories] = useState(true);
+  const [historyError, setHistoryError] = useState(false);
+  const [historyRevision, setHistoryRevision] = useState(0);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [activeType, setActiveType] = useState<GenerateType>("resume");
   const [results, setResults] = useState<Record<GenerateType, string>>(emptyResults);
   const [resultInputs, setResultInputs] = useState<Record<GenerateType, Record<string, unknown>>>(emptyInputs);
   const [history, setHistory] = useState<GeneratedHistory[]>([]);
+  const [unsaved, setUnsaved] = useState<Parameters<typeof createGeneratedHistory>[0] | null>(null);
+  const [savingHistory, setSavingHistory] = useState(false);
+  const generationRequest = useRef<AbortController | null>(null);
+  useEffect(() => () => generationRequest.current?.abort(), []);
+  const historyRequest = useRef<AbortController | null>(null);
+  const selectionRequest = useRef(0);
+  const [hasMoreHistory, setHasMoreHistory] = useState(false);
 
   const [resumePosition, setResumePosition] = useState("");
   const [resumeJd, setResumeJd] = useState("");
@@ -72,17 +83,23 @@ export default function GeneratePage() {
   const activeHistory = history.filter((item) => item.type === activeType);
 
   useEffect(() => {
-    fetchMemories()
-      .then(setMemories)
-      .finally(() => setLoadingMemories(false));
+    const controller = new AbortController();
+    Promise.resolve(getSupabase().from("memories").select("id").limit(1).abortSignal(controller.signal))
+      .then(({ data, error }) => { if (error) throw error; setHasMemories(Boolean(data?.length)); })
+      .catch(() => toast.error("记忆读取失败，请刷新后重试"))
+      .finally(() => { if (!controller.signal.aborted) setLoadingMemories(false); });
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
-    fetchGeneratedHistories()
-      .then(setHistory)
-      .catch(() => toast.error("生成历史读取失败"))
-      .finally(() => setLoadingHistory(false));
-  }, []);
+    const controller = new AbortController();
+    historyRequest.current = controller;
+    fetchGeneratedHistories(activeType, 0, controller.signal)
+      .then(items => { if (controller.signal.aborted) return; setHistoryError(false); setHistory(items); setHasMoreHistory(items.length === HISTORY_PAGE_SIZE); })
+      .catch(() => { if (!controller.signal.aborted) { setHistoryError(true); toast.error("生成历史读取失败"); } })
+      .finally(() => { if (!controller.signal.aborted) setLoadingHistory(false); });
+    return () => controller.abort();
+  }, [activeType, historyRevision]);
 
   function getHistoryDraft(type: GenerateType, content: string, historyTitle: string) {
     if (type === "resume") {
@@ -115,16 +132,22 @@ export default function GeneratePage() {
   }
 
   async function handleGenerate(type: GenerateType) {
+    if (generating || unsaved) {
+      if (unsaved) toast.warning("请先保存上一份生成结果，避免丢失");
+      return;
+    }
     if (!user) {
       toast.error("请先登录");
       return;
     }
-    if (memories.length === 0) {
+    if (!hasMemories) {
       toast.error("还没有记录，先去记一些经历吧");
       return;
     }
+    const controller = new AbortController();
+    generationRequest.current = controller;
     setGenerating(true);
-    setResults((current) => ({ ...current, [type]: "" }));
+
 
     const payload =
       type === "resume"
@@ -134,40 +157,62 @@ export default function GeneratePage() {
           : { type, position: customPrompt };
 
     try {
-      const res = await fetch("/api/claude/generate", {
+      const res = await fetchWithAuth("/api/deepseek/generate", {
         method: "POST",
-        headers: await getAuthHeaders(),
+        signal: controller.signal,
         body: JSON.stringify(payload),
       });
       const data = await res.json();
+      if (controller.signal.aborted) return;
       if (data.error) {
         toast.error(data.error);
         return;
       }
 
       const content = data.content as string;
+      if (data.selectedCount < data.candidateCount || data.candidateCount >= 200) toast.info(`本次从最近的经历中选取 ${data.selectedCount} 条生成，可补充明确关键词提高匹配度。`);
       const historyTitle = typeof data.historyTitle === "string" ? data.historyTitle : "";
       const draft = getHistoryDraft(type, content, historyTitle);
-      const item = await createGeneratedHistory({
-        user_id: user.id,
-        ...draft,
-      });
-
       setResults((current) => ({ ...current, [type]: content }));
       setResultInputs((current) => ({ ...current, [type]: draft.inputs }));
-      setHistory((current) => [item, ...current]);
-      toast.success(`已保存到${TYPE_LABELS[type]}历史`);
-    } catch {
-      toast.error("生成失败，请稍后重试");
+      const pending = { id: crypto.randomUUID(), user_id: user.id, ...draft };
+      setUnsaved(pending);
+      try {
+        const item = await createGeneratedHistory(pending);
+        setHistory((current) => [item, ...current]);
+        setUnsaved(null);
+        toast.success(`已保存到${TYPE_LABELS[type]}历史`);
+      } catch {
+        toast.warning("内容已生成，但历史保存失败。请复制内容或重试保存。");
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) toast.error(error instanceof Error ? error.message : "生成失败，请稍后重试");
     } finally {
       setGenerating(false);
     }
   }
 
-  function handleSelectHistory(item: GeneratedHistory) {
-    setActiveType(item.type);
-    setResults((current) => ({ ...current, [item.type]: item.content }));
-    setResultInputs((current) => ({ ...current, [item.type]: item.inputs }));
+  async function handleSelectHistory(item: GeneratedHistory) {
+    const selection = ++selectionRequest.current;
+    try {
+      const full = item.content ? item : await getGeneratedHistory(item.id);
+      if (selection !== selectionRequest.current) return;
+      setResults((current) => ({ ...current, [full.type]: full.content }));
+      setResultInputs((current) => ({ ...current, [full.type]: full.inputs }));
+    } catch { toast.error("历史正文读取失败，请重试"); }
+  }
+
+  async function loadMoreHistory() {
+    if (loadingHistory) return;
+    setLoadingHistory(true);
+    try {
+      const controller = historyRequest.current;
+      const items = await fetchGeneratedHistories(activeType, activeHistory.length, controller?.signal);
+      if (controller?.signal.aborted) return;
+      setHistory(current => [...current, ...items.filter(item => !current.some(existing => existing.id === item.id))]);
+      setHasMoreHistory(items.length === HISTORY_PAGE_SIZE);
+    } catch { toast.error("历史读取失败，请重试"); }
+    finally { setLoadingHistory(false); }
   }
 
   async function handleDeleteHistory(id: string) {
@@ -181,8 +226,22 @@ export default function GeneratePage() {
   }
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(activeResult);
-    toast.success("已复制到剪贴板");
+    try {
+      await navigator.clipboard.writeText(activeResult);
+      toast.success("已复制到剪贴板");
+    } catch { toast.error("复制失败，请手动选择并复制内容"); }
+  }
+
+  async function retryHistory() {
+    if (!unsaved || savingHistory) return;
+    setSavingHistory(true);
+    try {
+      const item = await createGeneratedHistory(unsaved);
+      setHistory(current => [item, ...current]);
+      setUnsaved(null);
+      toast.success("历史已保存");
+    } catch { toast.error("历史保存失败，请稍后重试"); }
+    finally { setSavingHistory(false); }
   }
 
   const activePrompt =
@@ -192,7 +251,7 @@ export default function GeneratePage() {
         ? String(resultInputs.intro.scene ?? "")
         : String(resultInputs.custom.prompt ?? "");
 
-  const historyContent = loadingHistory ? (
+  const historyContent = historyError ? (<div role="alert" className="text-sm">历史读取失败。<Button variant="outline" onClick={() => setHistoryRevision(value => value + 1)}>重试</Button></div>) : loadingHistory ? (
     <div className="rounded-md border border-dashed p-4 text-xs text-muted-foreground">正在读取历史...</div>
   ) : activeHistory.length === 0 ? (
     <div className="rounded-md border border-dashed p-4 text-xs text-muted-foreground">
@@ -235,6 +294,7 @@ export default function GeneratePage() {
           </div>
         </div>
       ))}
+      {hasMoreHistory && <Button variant="outline" disabled={loadingHistory} onClick={loadMoreHistory}>加载更多历史</Button>}
     </div>
   );
 
@@ -248,11 +308,12 @@ export default function GeneratePage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
+      {unsaved && <div role="alert" className="mb-4 rounded-md border p-3 text-sm">有生成内容尚未保存。<Button variant="outline" onClick={retryHistory} disabled={savingHistory}>重试保存历史</Button></div>}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div className="min-w-0">
           <Tabs
             value={activeType}
-            onValueChange={(value) => setActiveType(value as GenerateType)}
+            onValueChange={(value) => { if (value === activeType) return; setLoadingHistory(true); setHasMoreHistory(false); setActiveType(value as GenerateType); }}
             className="space-y-6"
           >
             <TabsList className="w-full justify-start bg-transparent border-b rounded-none p-0 h-auto gap-4">

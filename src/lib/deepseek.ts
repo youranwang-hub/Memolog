@@ -6,16 +6,21 @@ interface ChatParams {
   userPrompt: string;
   maxTokens?: number;
   model?: string;
+  signal?: AbortSignal;
 }
 
 export async function chat({
   systemPrompt,
   userPrompt,
   maxTokens = 1000,
-  model = "deepseek-chat",
+  model = process.env.DEEPSEEK_MODEL || "deepseek-chat",
+  signal,
 }: ChatParams): Promise<string> {
+  if (!API_KEY()) throw new Error("DeepSeek 尚未配置");
+  const timeout = AbortSignal.timeout(45_000);
   const res = await fetch(`${DEEPSEEK_BASE}/chat/completions`, {
     method: "POST",
+    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${API_KEY()}`,
@@ -32,10 +37,11 @@ export async function chat({
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`DeepSeek API error ${res.status}: ${err}`);
+    throw new Error(`DeepSeek API error ${res.status}`);
   }
 
   const data = await res.json();
-  return data.choices[0].message.content;
+  const content = data.choices?.[0]?.message?.content;
+  if (typeof content !== "string" || !content.trim()) throw new Error("DeepSeek 返回内容为空");
+  return content;
 }

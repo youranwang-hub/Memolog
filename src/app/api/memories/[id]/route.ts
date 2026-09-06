@@ -1,19 +1,15 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-function getServerSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-}
+import { requireUser } from "@/lib/api-auth";
+import { validateMemory } from "@/lib/memory-validation";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = getServerSupabase();
+    const auth = await requireUser(request);
+    if (auth.error) return auth.error;
+    const { supabase } = auth;
     const { id } = await params;
 
     const { data, error } = await supabase.from("memories").select("*").eq("id", id).single();
@@ -32,13 +28,18 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = getServerSupabase();
+    const auth = await requireUser(request);
+    if (auth.error) return auth.error;
+    const { supabase } = auth;
     const { id } = await params;
     const body = await request.json();
+    const { data: current, error: readError } = await supabase.from("memories").select("*").eq("id", id).single();
+    if (readError) return NextResponse.json({ error: "记录不存在" }, { status: 404 });
+    const updates = validateMemory({ ...current, ...body });
 
     const { data, error } = await supabase
       .from("memories")
-      .update(body)
+      .update(updates)
       .eq("id", id)
       .select()
       .single();
@@ -57,7 +58,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = getServerSupabase();
+    const auth = await requireUser(request);
+    if (auth.error) return auth.error;
+    const { supabase } = auth;
     const { id } = await params;
 
     const { error } = await supabase.from("memories").delete().eq("id", id);

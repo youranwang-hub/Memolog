@@ -18,6 +18,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileInput | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [newCategory, setNewCategory] = useState("");
 
   useEffect(() => {
@@ -50,6 +51,7 @@ export default function ProfilePage() {
   function updateField(field: keyof ProfileInput, value: string) {
     if (!profile) return;
     setProfile({ ...profile, [field]: value });
+    setDirty(true);
   }
 
   function addCategory() {
@@ -62,9 +64,11 @@ export default function ProfilePage() {
     }
     setProfile({ ...profile, custom_categories: [...profile.custom_categories, value] });
     setNewCategory("");
+    setDirty(true);
   }
 
   function removeCategory(category: string) {
+    setDirty(true);
     if (!profile) return;
     setProfile({
       ...profile,
@@ -78,6 +82,7 @@ export default function ProfilePage() {
     try {
       const saved = await saveProfile(profile);
       setProfile(saved);
+      setDirty(false);
       toast.success("档案已保存");
     } catch {
       toast.error("保存失败，请稍后重试");
@@ -133,7 +138,7 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            这里的分类会用于记录、编辑和筛选。可以自由添加或删除；删除不会影响已有记忆的内容。
+            修改后请点击保存。这里的分类会用于记录、编辑和筛选。可以自由添加或删除；删除不会影响已有记忆的内容。
           </p>
           <div className="flex gap-2">
             <Input
@@ -153,6 +158,7 @@ export default function ProfilePage() {
               添加
             </Button>
           </div>
+          <Button variant="outline" onClick={handleSave} disabled={saving || !dirty}>{saving ? "保存中…" : dirty ? "保存分类与档案" : "已保存"}</Button>
           {profile.custom_categories.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {profile.custom_categories.map((category) => (
@@ -274,7 +280,8 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-3">
+        {dirty && <span className="text-sm text-muted-foreground">有未保存的修改</span>}
         <Button onClick={handleSave} disabled={saving}>
           {saving ? "保存中..." : "保存档案"}
         </Button>

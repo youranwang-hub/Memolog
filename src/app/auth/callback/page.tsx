@@ -1,35 +1,24 @@
 "use client";
-
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
-
 export default function AuthCallbackPage() {
+  const [error, setError] = useState("");
   useEffect(() => {
-    async function handleCallback() {
-      const code = new URLSearchParams(window.location.search).get("code");
-    
-      const result = code
-        ? await getSupabase().auth.exchangeCodeForSession(code)
-        : await getSupabase().auth.getSession();
-    
-      if (result.error) {
-        console.error("Callback session error:", result.error);
-        return;
-      }
-    
-      if (result.data.session) {
-        window.location.replace("/dashboard");
-  }
-}
-    handleCallback();
+    let active = true;
+    async function verify() {
+      try {
+        const code = new URLSearchParams(window.location.search).get("code");
+        const result = code ? await getSupabase().auth.exchangeCodeForSession(code) : await getSupabase().auth.getSession();
+        if (result.error || !result.data.session) throw new Error("验证链接无效或已过期，请返回登录页重新操作。");
+        if (active) window.location.replace("/dashboard");
+      } catch { if (active) setError("验证未完成，请检查网络或重新获取验证邮件。"); }
+    }
+    void verify();
+    return () => { active = false; };
   }, []);
-
-  return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center space-y-3">
-        <div className="animate-spin h-6 w-6 border-2 border-stone-400 border-t-transparent rounded-full mx-auto" />
-        <p className="text-sm text-muted-foreground">正在验证你的邮箱...</p>
-      </div>
-    </div>
-  );
+  return <div className="min-h-screen flex items-center justify-center p-4"><div className="text-center space-y-4">
+    <p role={error ? "alert" : "status"}>{error || "正在验证你的邮箱…"}</p>
+    {error && <Link href="/" className="underline">返回登录</Link>}
+  </div></div>;
 }

@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { toast } from "sonner";
+import { parseEventDay } from "@/lib/dates";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { MemoryForm } from "@/components/memory/memory-form";
 import { MemoryCard } from "@/components/memory/memory-card";
-import { MemoryHeatmap } from "@/components/memory/memory-heatmap";
+import { MemoryTimeline } from "@/components/memory/memory-timeline";
 import { MemoryGraph } from "@/components/memory/memory-graph";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,18 +26,7 @@ import { fetchProfile } from "@/lib/profile";
 
 type TimeFilter = "all" | "unknown" | `month:${string}` | `year:${string}`;
 
-function parseEventDate(value: string) {
-  if (!value || value === "未知") return null;
-  // yyyy-MM-dd 或 yyyy-MM 都支持
-  const match = value.match(/^(\d{4})-(\d{2})/);
-  if (!match) return null;
-
-  const year = Number(match[1]);
-  const month = Number(match[2]) - 1;
-  if (!Number.isFinite(year) || !Number.isFinite(month)) return null;
-
-  return new Date(year, Math.max(0, Math.min(month, 11)), 1);
-}
+const parseEventDate = parseEventDay;
 
 function getEventMonthKey(memory: Memory) {
   const eventDate = parseEventDate(memory.event_date);
@@ -72,8 +63,11 @@ function matchesTimeFilter(memory: Memory, filter: TimeFilter) {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const [memories, setMemories] = useState<Memory[]>([]);
-  const [baseMemories, setBaseMemories] = useState<Memory[]>([]);
+  const [revision, setRevision] = useState(0);
+  const [queryError, setQueryError] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [visibleCount, setVisibleCount] = useState(40);
+  const [allMemories, setAllMemories] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("all");
@@ -82,40 +76,52 @@ export default function DashboardPage() {
   const [showProfileNudge, setShowProfileNudge] = useState(false);
   const [categories, setCategories] = useState<string[]>(getCategories());
 
-  const loadMemories = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const data = await fetchMemories({
-        category: category !== "all" ? category : undefined,
-        search: search.trim() || undefined,
-      });
-      setBaseMemories(data);
-      setMemories(data.filter((memory) => matchesTimeFilter(memory, timeFilter)));
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
+  function loadMemories() { setRevision(value => value + 1); }
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+    const saved = sessionStorage.getItem("memolog-library");
+    if (saved) {
+      try {
+        const state = JSON.parse(saved);
+        if (typeof state.search === "string") setSearch(state.search);
+        if (typeof state.category === "string") setCategory(state.category);
+        if (["heatmap", "grid", "graph"].includes(state.view)) setView(state.view);
+        if (typeof state.timeFilter === "string") setTimeFilter(state.timeFilter as TimeFilter);
+      } catch { sessionStorage.removeItem("memolog-library"); }
     }
-  }, [user, category, search, timeFilter]);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      sessionStorage.setItem("memolog-library", JSON.stringify({ search, category, view, timeFilter }));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, category, view, timeFilter]);
+  const baseMemories = useMemo(() => allMemories.filter(memory => {
+    const term = debouncedSearch.toLocaleLowerCase();
+    return (category === "all" || memory.category === category) && (!term || [memory.title, memory.content, ...memory.tags].some(value => value.toLocaleLowerCase().includes(term)));
+  }), [allMemories, category, debouncedSearch]);
+  const memories = useMemo(() => baseMemories.filter(memory => matchesTimeFilter(memory, timeFilter)), [baseMemories, timeFilter]);
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
 
     async function run() {
       if (!user) return;
       setLoading(true);
       try {
         const data = await fetchMemories({
-          category: category !== "all" ? category : undefined,
-          search: search.trim() || undefined,
+          signal: controller.signal,
         });
         if (active) {
-          setBaseMemories(data);
-          setMemories(data.filter((memory) => matchesTimeFilter(memory, timeFilter)));
+          setAllMemories(data);
+          setQueryError(false);
         }
       } catch {
-        // silent
+        if (active) setQueryError(true);
       } finally {
         if (active) setLoading(false);
       }
@@ -125,8 +131,9 @@ export default function DashboardPage() {
 
     return () => {
       active = false;
+      controller.abort();
     };
-  }, [user, category, search, timeFilter]);
+  }, [user, revision]);
 
   useEffect(() => {
     let active = true;
@@ -146,7 +153,7 @@ export default function DashboardPage() {
           setCategories(getCategories(profile?.custom_categories));
         }
       } catch {
-        if (active) setShowProfileNudge(false);
+        if (active) { setShowProfileNudge(false); toast.error("档案读取失败，暂时使用默认分类"); }
       }
     }
 
@@ -284,7 +291,7 @@ export default function DashboardPage() {
             aria-label="回望视图"
           >
             <CalendarDays className="h-4 w-4 sm:mr-1.5" />
-            <span className="hidden sm:inline">回望</span>
+            <span className="inline">回望</span>
           </Button>
           <Button
             variant={view === "grid" ? "secondary" : "ghost"}
@@ -294,7 +301,7 @@ export default function DashboardPage() {
             aria-label="卡片视图"
           >
             <Grid2X2 className="h-4 w-4 sm:mr-1.5" />
-            <span className="hidden sm:inline">卡片</span>
+            <span className="inline">卡片</span>
           </Button>
           <Button
             variant={view === "graph" ? "secondary" : "ghost"}
@@ -304,17 +311,17 @@ export default function DashboardPage() {
             aria-label="图谱视图"
           >
             <GitFork className="h-4 w-4 sm:mr-1.5" />
-            <span className="hidden sm:inline">图谱</span>
+            <span className="inline">图谱</span>
           </Button>
         </div>
       </div>
 
-      {loading ? (
+      {queryError ? (<div role="alert" className="text-sm">读取失败，请检查网络。<Button onClick={loadMemories}>重试</Button></div>) : loading ? (
         <div className="flex justify-center py-16">
           <div className="animate-spin h-6 w-6 border-2 border-stone-400 border-t-transparent rounded-full" />
         </div>
       ) : view === "heatmap" ? (
-        <MemoryHeatmap memories={baseMemories} />
+        <MemoryTimeline memories={baseMemories} />
       ) : memories.length === 0 ? (
         <div className="text-center py-16 space-y-3">
           <p className="text-muted-foreground text-sm">
@@ -327,9 +334,10 @@ export default function DashboardPage() {
         <MemoryGraph memories={memories} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {memories.map((m) => (
+          {memories.slice(0, visibleCount).map((m) => (
             <MemoryCard key={m.id} memory={m} />
           ))}
+          {memories.length > visibleCount && <Button variant="outline" onClick={() => setVisibleCount(count => count + 40)}>加载更多</Button>}
         </div>
       )}
     </div>

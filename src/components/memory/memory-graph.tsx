@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Category, Memory } from "@/lib/types";
 import { EMOTION_MAP } from "@/lib/types";
 import { ExternalLink, RotateCcw } from "lucide-react";
+import { getCategoryColor as categoryColor } from "@/lib/category-colors";
 import { formatEventDate } from "@/lib/dates";
 
 type NodeKind = "root" | "category" | "memory" | "tag";
@@ -39,20 +40,7 @@ interface Props {
 const WIDTH = 840;
 const HEIGHT = 520;
 const CENTER = { x: WIDTH / 2, y: HEIGHT / 2 + 12 };
-const CATEGORY_COLORS = [
-  "#d97706",
-  "#2563eb",
-  "#059669",
-  "#7c3aed",
-  "#e11d48",
-  "#0891b2",
-  "#57534e",
-];
-
-function getCategoryColor(category: Category) {
-  const index = Array.from(category).reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  return CATEGORY_COLORS[index % CATEGORY_COLORS.length];
-}
+function getCategoryColor(category: Category) { return categoryColor(category).heatmap; }
 
 function truncateLabel(label: string, max = 8) {
   return label.length > max ? `${label.slice(0, max)}...` : label;
@@ -80,6 +68,7 @@ export function MemoryGraph({ memories }: Props) {
   const [tagLimit, setTagLimit] = useState(8);
   const [memoryLimit, setMemoryLimit] = useState(10);
   const [physicsEnabled, setPhysicsEnabled] = useState(true);
+  const [layoutVersion, setLayoutVersion] = useState(0);
   const [positions, setPositions] = useState<Record<string, Position>>({});
   const positionsRef = useRef<Record<string, Position>>({});
   const draggingRef = useRef<string | null>(null);
@@ -211,6 +200,8 @@ export function MemoryGraph({ memories }: Props) {
 
   useEffect(() => {
     let frameId = 0;
+    let frames = 0;
+    let quietFrames = 0;
 
     function syncNodes() {
       const validNodeIds = new Set(graph.nodes.map((node) => node.id));
@@ -302,12 +293,15 @@ export function MemoryGraph({ memories }: Props) {
       }
 
       setPositions({ ...positionsRef.current });
-      frameId = requestAnimationFrame(tick);
+      frames += 1;
+      const moving = Object.values(positionsRef.current).some(p => Math.abs(p.vx) + Math.abs(p.vy) > 0.05);
+      quietFrames = moving ? 0 : quietFrames + 1;
+      if (physicsEnabled && quietFrames < 20 && frames < 600) frameId = requestAnimationFrame(tick);
     }
 
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-  }, [graph, physicsEnabled]);
+  }, [graph, physicsEnabled, layoutVersion]);
 
   const selectedNode = nodeMap.get(selectedId) ?? graph.nodes[0];
   const activeId = hoveredId ?? selectedId;
@@ -359,12 +353,13 @@ export function MemoryGraph({ memories }: Props) {
     });
     setPositions({ ...positionsRef.current });
     setSelectedId("root");
+    setLayoutVersion(version => version + 1);
   }
 
   return (
     <div className="space-y-3">
       <Card>
-        <CardContent className="p-3 space-y-3">
+        <CardContent className="p-3 space-y-3"><details><summary className="cursor-pointer text-sm">图谱显示设置</summary>
           <div className="flex flex-wrap items-center gap-3">
             <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
               <input
@@ -436,8 +431,8 @@ export function MemoryGraph({ memories }: Props) {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            连接标准：中心连接分类，分类连接对应记忆，标签只连接出现过该标签的记忆；标签和每类记忆数量可由你控制。
-          </p>
+            连接标准：中心连接分类，分类连接对应记忆，标签只连接出现过该标签的记忆；每个标签最多显示 5 条关联；标签和每类记忆数量可由你控制。
+          </p></details>
         </CardContent>
       </Card>
 
@@ -459,12 +454,17 @@ export function MemoryGraph({ memories }: Props) {
                 position.y = next.y;
                 position.vx = 0;
                 position.vy = 0;
+                setPositions({ ...positionsRef.current });
               }}
               onPointerUp={() => {
+                if (!draggingRef.current) return;
                 draggingRef.current = null;
+                setLayoutVersion(version => version + 1);
               }}
               onPointerLeave={() => {
+                if (!draggingRef.current) return;
                 draggingRef.current = null;
+                setLayoutVersion(version => version + 1);
               }}
             >
               <defs>
