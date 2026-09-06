@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS public.personal_site_memories (
   memory_id UUID PRIMARY KEY REFERENCES public.memories(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   is_public BOOLEAN NOT NULL DEFAULT FALSE,
+  site_section TEXT NOT NULL DEFAULT 'memories',
   title TEXT NOT NULL DEFAULT '',
   summary TEXT NOT NULL DEFAULT '',
   body TEXT NOT NULL DEFAULT '',
@@ -15,6 +16,9 @@ CREATE TABLE IF NOT EXISTS public.personal_site_memories (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   published_at TIMESTAMPTZ
 );
+
+ALTER TABLE public.personal_site_memories
+  ADD COLUMN IF NOT EXISTS site_section TEXT NOT NULL DEFAULT 'memories';
 
 CREATE INDEX IF NOT EXISTS idx_personal_site_memories_user_public
   ON public.personal_site_memories(user_id, is_public);

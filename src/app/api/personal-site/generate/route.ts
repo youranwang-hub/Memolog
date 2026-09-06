@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const { data: memory, error } = await auth.supabase.from("memories").select("*").eq("id", memoryId).single();
     if (error || !memory) return NextResponse.json({ error: "记忆不存在" }, { status: 404 });
     const content = await chat({
-      systemPrompt: `你是个人网站的编辑。基于一条私密记忆，写一份可公开的“克制随笔”草稿。只使用确实提供的信息；删除敏感的人名、联系方式和私密细节；简约、沉静，避免流水账、夸张和虚构。输出严格 JSON：{"title":"","summary":"","body":"","category":"","tags":[],"event_date":"","event_date_end":null,"cover_image_url":null,"publish_cover_image":false,"is_public":false}。body 使用纯文本分段。`,
+      systemPrompt: `你是个人网站的编辑。基于一条私密记忆，写一份面向导师、面试官与同行的可公开草稿。只使用确实提供的信息；删除敏感的人名、联系方式和私密细节；简约、沉静，避免流水账、夸张和虚构。判断合适栏目：projects（项目）、papers（论文）、research（科研）、hobbies（爱好）、memories（随笔）。输出严格 JSON：{"site_section":"projects|papers|research|hobbies|memories","title":"","summary":"","body":"","category":"","tags":[],"event_date":"","event_date_end":null,"cover_image_url":null,"publish_cover_image":false,"is_public":false}。body 使用纯文本分段。`,
       userPrompt: JSON.stringify({ event_date: memory.event_date, event_date_end: memory.event_date_end, category: memory.category, title: memory.title, result: memory.result, content: memory.content, tags: memory.tags }),
       maxTokens: 1800, signal: request.signal,
     });

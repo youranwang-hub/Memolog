@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Globe2, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { fetchWithAuth } from "@/lib/api-client";
-import type { Memory, PersonalSiteMemory } from "@/lib/types";
+import { PERSONAL_SITE_SECTIONS, type Memory, type PersonalSiteMemory } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 type Draft = Omit<PersonalSiteMemory, "memory_id" | "user_id" | "updated_at" | "published_at">;
 
 function fromMemory(memory: Memory): Draft {
-  return { is_public: false, title: memory.title, summary: memory.result || memory.content.slice(0, 120), body: memory.content, category: memory.category, tags: memory.tags, event_date: memory.event_date, event_date_end: memory.event_date_end ?? null, cover_image_url: null, publish_cover_image: false };
+  return { is_public: false, site_section: "memories", title: memory.title, summary: memory.result || memory.content.slice(0, 120), body: memory.content, category: memory.category, tags: memory.tags, event_date: memory.event_date, event_date_end: memory.event_date_end ?? null, cover_image_url: null, publish_cover_image: false };
 }
 
 export function PersonalSitePublisher({ memory }: { memory: Memory }) {
@@ -93,7 +93,8 @@ export function PersonalSitePublisher({ memory }: { memory: Memory }) {
           <div className="space-y-1"><Label>标题</Label><Input value={draft.title} maxLength={120} onChange={(event) => update("title", event.target.value)} /></div>
           <div className="space-y-1"><Label>摘要</Label><Textarea value={draft.summary} maxLength={360} rows={3} onChange={(event) => update("summary", event.target.value)} /></div>
           <div className="space-y-1"><Label>正文</Label><Textarea value={draft.body} maxLength={12000} rows={12} onChange={(event) => update("body", event.target.value)} /></div>
-          <div className="grid gap-3 sm:grid-cols-2"><div className="space-y-1"><Label>分类</Label><Input value={draft.category} maxLength={40} onChange={(event) => update("category", event.target.value)} /></div><div className="space-y-1"><Label>标签（用逗号分隔）</Label><Input value={draft.tags.join(", ")} onChange={(event) => update("tags", event.target.value.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean))} /></div></div>
+          <div className="grid gap-3 sm:grid-cols-2"><div className="space-y-1"><Label>发布到</Label><select className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm" value={draft.site_section} onChange={(event) => update("site_section", event.target.value as Draft["site_section"])}>{PERSONAL_SITE_SECTIONS.map((section) => <option key={section.value} value={section.value}>{section.label}</option>)}</select></div><div className="space-y-1"><Label>分类</Label><Input value={draft.category} maxLength={40} onChange={(event) => update("category", event.target.value)} /></div></div>
+          <div className="space-y-1"><Label>标签（用逗号分隔）</Label><Input value={draft.tags.join(", ")} onChange={(event) => update("tags", event.target.value.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean))} /></div>
           <div className="space-y-1"><Label>封面图地址（可选）</Label><Input value={draft.cover_image_url ?? ""} placeholder="默认不会发布图片" onChange={(event) => update("cover_image_url", event.target.value || null)} /></div>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={draft.publish_cover_image} disabled={!draft.cover_image_url} onChange={(event) => update("publish_cover_image", event.target.checked)} />发布这张封面图</label>
         </div>

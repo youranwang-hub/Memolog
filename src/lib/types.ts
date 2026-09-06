@@ -34,6 +34,7 @@ export interface PersonalSiteMemory {
   memory_id: string;
   user_id: string;
   is_public: boolean;
+  site_section: PersonalSiteSection;
   title: string;
   summary: string;
   body: string;
@@ -46,6 +47,16 @@ export interface PersonalSiteMemory {
   updated_at: string;
   published_at?: string | null;
 }
+
+export type PersonalSiteSection = "projects" | "papers" | "research" | "hobbies" | "memories";
+
+export const PERSONAL_SITE_SECTIONS: { value: PersonalSiteSection; label: string }[] = [
+  { value: "projects", label: "项目" },
+  { value: "papers", label: "论文" },
+  { value: "research", label: "科研" },
+  { value: "hobbies", label: "爱好" },
+  { value: "memories", label: "记忆随笔" },
+];
 
 export interface ExtractedMemory {
   event_date: string;
