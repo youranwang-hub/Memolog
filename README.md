@@ -4,7 +4,7 @@
 
 > 把真实经历沉淀为可检索、可复用的个人记忆库。
 
-Memolog 是一个面向学生和初入职场用户的个人第二大脑。它不是通用聊天工具，而是帮助你随手记录经历、保留细节，并在写简历、准备自我介绍或整理思路时，从自己的真实记忆中生成内容。
+Memolog 是面向学生和初入职场用户的个人记忆库：将自然语言经历整理为结构化记录，并基于真实内容生成可复用的表达。
 
 ## 功能
 
@@ -25,17 +25,25 @@ Memolog 是一个面向学生和初入职场用户的个人第二大脑。它不
 - [Supabase](https://supabase.com/)：认证、PostgreSQL、行级安全策略（RLS）
 - [DeepSeek API](https://www.deepseek.com/)：经历提炼与内容生成
 
-## 本地运行
+## 使用方式
 
-### 1. 安装依赖
+### 使用在线版本
+
+访问 [Memolog](https://memolog-v6nv.vercel.app)，注册或登录后即可使用。数据通过 Supabase 按账号隔离；个人网站同步仅对部署者指定的站主账号开放。
+
+### 自行部署
+
+克隆仓库并安装依赖：
 
 ```bash
+git clone https://github.com/youranwang-hub/Memolog.git
+cd Memolog/app
 npm install
 ```
 
-### 2. 配置环境变量
+复制 `.env.example` 为 `.env.local`，完成以下配置后初始化 Supabase 并启动服务。
 
-复制并填写 `.env.local`：
+#### 环境变量
 
 ```env
 # Supabase（浏览器端可用）
@@ -49,7 +57,7 @@ DEEPSEEK_API_KEY=your-deepseek-api-key
 DEEPSEEK_MODEL=deepseek-chat
 ```
 
-### 3. 初始化 Supabase
+#### Supabase 初始化
 
 在 Supabase 项目的 **SQL Editor** 中执行 [supabase-schema.sql](./supabase-schema.sql)。脚本会创建：
 
@@ -70,12 +78,12 @@ ALTER TABLE public.profiles
 ADD COLUMN IF NOT EXISTS custom_categories TEXT[] NOT NULL DEFAULT '{}';
 ```
 
-### 3.1 启用相关图片
+#### 图片附件（可选）
 
 在 Supabase 项目的 **SQL Editor** 中执行 [supabase-memory-images.sql](./supabase-memory-images.sql)。
 它会创建私有图片 Bucket、附件表和按用户隔离的访问策略；支持 JPG、PNG、WebP，单张上限 5MB。
 
-### 4. 启动开发服务
+#### 启动与部署
 
 ```bash
 npm run dev
@@ -91,6 +99,7 @@ npm run dev -- --webpack
 
 ```bash
 npm run lint     # ESLint 检查
+npm test         # Node 测试
 npm run build    # 生产构建检查
 npm run start    # 启动生产服务（需先 build）
 ```
@@ -119,9 +128,20 @@ src/
 - 个人网站同步仅允许 `MEMOLOG_PERSONAL_SITE_OWNER_USER_ID`（或邮箱）指定的账号。GitHub Fine-grained Token 只配置在 Vercel 的 `GITHUB_PERSONAL_SITE_TOKEN`，浏览器和 Supabase 均不会收到它。
 - 生成内容基于用户保存的记忆与档案；使用前请自行核对事实和措辞。
 
-## 部署
+部署到 [Vercel](https://vercel.com/) 时，填入与 `.env.local` 相同的服务端变量，并在 Supabase Auth 中将 `https://your-domain/auth/callback` 与 `https://your-domain/reset-password` 加入 Redirect URLs。
 
-推荐部署到 [Vercel](https://vercel.com/)。在项目环境变量中填入与 `.env.local` 相同的 Supabase 和 DeepSeek 配置，然后执行部署即可。
+### 个人网站同步（可选）
+
+执行 `supabase-personal-site.sql`，并在 Vercel 配置以下私密变量：
+
+```env
+MEMOLOG_PERSONAL_SITE_OWNER_USER_ID=your-supabase-user-id
+GITHUB_PERSONAL_SITE_TOKEN=github-fine-grained-token
+GITHUB_PERSONAL_SITE_REPO=your-account/personal-website
+GITHUB_PERSONAL_SITE_BRANCH=main
+```
+
+Token 仅需目标仓库的 Contents 读写权限。原始记忆不会同步，只有经编辑确认的公开版本会写入目标栏目。
 
 ## 许可证
 
