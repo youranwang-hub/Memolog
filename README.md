@@ -56,6 +56,7 @@ DEEPSEEK_MODEL=deepseek-chat
 - `memories`：用户记忆
 - `profiles`：个人档案和自定义分类
 - `generated_histories`：AI 生成历史
+- `personal_site_memories`：仅站主可编辑的个人网站公开版本；执行 [supabase-personal-site.sql](./supabase-personal-site.sql) 创建
 
 同时会创建 RLS 策略，用户只能访问自己的数据。
 
@@ -115,6 +116,7 @@ src/
 
 - 数据按 Supabase 用户 ID 隔离，依赖 RLS 限制访问范围。
 - AI 密钥仅在服务端路由中使用，切勿将 `DEEPSEEK_API_KEY` 暴露到浏览器端。
+- 个人网站同步仅允许 `MEMOLOG_PERSONAL_SITE_OWNER_USER_ID`（或邮箱）指定的账号。GitHub Fine-grained Token 只配置在 Vercel 的 `GITHUB_PERSONAL_SITE_TOKEN`，浏览器和 Supabase 均不会收到它。
 - 生成内容基于用户保存的记忆与档案；使用前请自行核对事实和措辞。
 
 ## 部署

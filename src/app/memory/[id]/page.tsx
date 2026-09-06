@@ -47,6 +47,8 @@ import {
   uploadMemoryAttachments,
   MAX_MEMORY_IMAGES,
 } from "@/lib/memory-attachments";
+import { PersonalSitePublisher } from "@/components/memory/personal-site-publisher";
+import { fetchWithAuth } from "@/lib/api-client";
 
 type DateMode = "single" | "range";
 type AttachmentPreview = MemoryAttachment & { url: string };
@@ -193,6 +195,8 @@ export default function MemoryDetailPage({
     try {
       await deleteMemoryAttachments(attachments);
       await deleteMemory(id);
+      // Owners get an immediate removal from the public JSON; other accounts receive 403 and continue normally.
+      await fetchWithAuth("/api/personal-site/sync", { method: "POST" }).catch(() => undefined);
       toast.success("已删除");
       router.push("/dashboard");
     } catch {
@@ -251,6 +255,7 @@ export default function MemoryDetailPage({
           返回
         </Button>
         <div className="flex gap-1">
+          {!editing && <PersonalSitePublisher memory={memory} />}
           {!editing && (
             <Button variant="ghost" size="sm" onClick={startEditing}>
               编辑

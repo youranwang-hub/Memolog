@@ -13,6 +13,7 @@ import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import type { ProfileInput } from "@/lib/types";
 import { createEmptyProfile, fetchProfile, saveProfile } from "@/lib/profile";
+import { PersonalSiteSync } from "@/components/personal-site-sync";
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -132,6 +133,11 @@ export default function ProfilePage() {
             />
           </div>
         </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">个人网站同步</CardTitle></CardHeader>
+        <CardContent><PersonalSiteSync /></CardContent>
       </Card>
 
       <Card>

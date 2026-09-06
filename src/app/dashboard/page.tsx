@@ -323,11 +323,11 @@ export default function DashboardPage() {
       ) : view === "graph" ? (
         <MemoryGraph memories={memories} />
       ) : (
-        <div className="border-t">
+        <div className="memory-list-grid">
           {memories.slice(0, visibleCount).map((m) => (
             <MemoryCard key={m.id} memory={m} />
           ))}
-          {memories.length > visibleCount && <Button variant="outline" onClick={() => setVisibleCount(count => count + 40)}>加载更多</Button>}
+          {memories.length > visibleCount && <Button className="memory-list-more" variant="outline" onClick={() => setVisibleCount(count => count + 40)}>加载更多</Button>}
         </div>
       )}
     </div>

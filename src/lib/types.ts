@@ -29,6 +29,24 @@ export interface MemoryAttachment {
   created_at: string;
 }
 
+/** A separately edited, deliberately public rendition of a private memory. */
+export interface PersonalSiteMemory {
+  memory_id: string;
+  user_id: string;
+  is_public: boolean;
+  title: string;
+  summary: string;
+  body: string;
+  category: string;
+  tags: string[];
+  event_date: string;
+  event_date_end?: string | null;
+  cover_image_url?: string | null;
+  publish_cover_image: boolean;
+  updated_at: string;
+  published_at?: string | null;
+}
+
 export interface ExtractedMemory {
   event_date: string;
   event_date_end?: string | null;

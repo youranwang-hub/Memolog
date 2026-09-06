@@ -8,9 +8,9 @@ export function MemoryCard({ memory }: { memory: Memory }) {
   return (
     <Link href={`/memory/${memory.id}`} className="memory-row">
       <span className="memory-row-date">{formatEventDateRange(memory.event_date, memory.event_date_end)}</span>
-      <div className="min-w-0">
-        <h3>{memory.title || "未命名经历"}</h3>
-        <p className="mt-2 line-clamp-2 text-sm leading-7 text-muted-foreground">{memory.result || memory.content}</p>
+      <div className="min-w-0 flex flex-1 flex-col">
+        <h3 className="line-clamp-2">{memory.title || "未命名经历"}</h3>
+        <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">{memory.result || memory.content}</p>
         <div className="memory-row-meta">
           <CategoryLabel category={memory.category} />
           {memory.tags.slice(0, 2).map(tag => <span key={tag}># {tag}</span>)}

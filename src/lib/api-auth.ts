@@ -65,6 +65,19 @@ export async function requireUser(request: Request) {
   return { error: null, supabase, user };
 }
 
+/** Personal-site publishing is intentionally available to one configured account only. */
+export async function requirePersonalSiteOwner(request: Request) {
+  const auth = await requireUser(request);
+  if (auth.error) return auth;
+  const ownerId = process.env.MEMOLOG_PERSONAL_SITE_OWNER_USER_ID?.trim();
+  const ownerEmail = process.env.MEMOLOG_PERSONAL_SITE_OWNER_EMAIL?.trim().toLocaleLowerCase();
+  const isOwner = Boolean((ownerId && auth.user.id === ownerId) || (ownerEmail && auth.user.email?.toLocaleLowerCase() === ownerEmail));
+  if (!isOwner) {
+    return { ...auth, error: NextResponse.json({ error: "无权使用个人网站发布功能" }, { status: 403 }) };
+  }
+  return auth;
+}
+
 export async function checkRateLimit(key: string, supabase?: SupabaseClient) {
   if (supabase) {
     const { data, error } = await supabase.rpc("consume_ai_quota", { p_action: key.split(":")[0] });
