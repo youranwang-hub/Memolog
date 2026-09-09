@@ -358,81 +358,36 @@ export function MemoryGraph({ memories }: Props) {
 
   return (
     <div className="space-y-3">
-      <Card>
-        <CardContent className="p-3 space-y-3"><details><summary className="cursor-pointer text-sm">图谱显示设置</summary>
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={showCategories}
-                onChange={(event) => setShowCategories(event.target.checked)}
-              />
-              分类枝干
-            </label>
-            <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={showMemories}
-                onChange={(event) => setShowMemories(event.target.checked)}
-              />
-              记忆节点
-            </label>
-            <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={showTags}
-                onChange={(event) => setShowTags(event.target.checked)}
-              />
-              标签关系
-            </label>
-            <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={physicsEnabled}
-                onChange={(event) => setPhysicsEnabled(event.target.checked)}
-              />
-              物理牵连
-            </label>
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={resetLayout}>
-              <RotateCcw className="h-3.5 w-3.5 mr-1" />
-              复位
-            </Button>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="space-y-1">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>高频标签</span>
-                <span>{tagLimit}</span>
+      <Card className="graph-settings">
+        <CardContent className="p-0">
+          <details>
+            <summary>
+              <span>显示选项</span>
+              <span>调整图谱内容与布局</span>
+            </summary>
+            <div className="graph-settings-body">
+              <div className="graph-toggle-list">
+                <label className="graph-toggle"><input type="checkbox" checked={showCategories} onChange={(event) => setShowCategories(event.target.checked)} />分类</label>
+                <label className="graph-toggle"><input type="checkbox" checked={showMemories} onChange={(event) => setShowMemories(event.target.checked)} />记忆</label>
+                <label className="graph-toggle"><input type="checkbox" checked={showTags} onChange={(event) => setShowTags(event.target.checked)} />标签</label>
+                <label className="graph-toggle"><input type="checkbox" checked={physicsEnabled} onChange={(event) => setPhysicsEnabled(event.target.checked)} />自动排列</label>
+                <Button variant="ghost" size="sm" className="graph-reset" onClick={resetLayout}>
+                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                  复位布局
+                </Button>
               </div>
-              <input
-                type="range"
-                min={0}
-                max={15}
-                value={tagLimit}
-                onChange={(event) => setTagLimit(Number(event.target.value))}
-                className="w-full"
-              />
-            </label>
-            <label className="space-y-1">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>每类记忆</span>
-                <span>{memoryLimit}</span>
+              <div className="graph-sliders">
+                <label>
+                  <div><span>标签数量</span><span>{tagLimit}</span></div>
+                  <input type="range" min={0} max={15} value={tagLimit} onChange={(event) => setTagLimit(Number(event.target.value))} />
+                </label>
+                <label>
+                  <div><span>每类记忆</span><span>{memoryLimit}</span></div>
+                  <input type="range" min={3} max={20} value={memoryLimit} onChange={(event) => setMemoryLimit(Number(event.target.value))} />
+                </label>
               </div>
-              <input
-                type="range"
-                min={3}
-                max={20}
-                value={memoryLimit}
-                onChange={(event) => setMemoryLimit(Number(event.target.value))}
-                className="w-full"
-              />
-            </label>
-          </div>
-
-          <p className="text-xs text-muted-foreground">
-            连接标准：中心连接分类，分类连接对应记忆，标签只连接出现过该标签的记忆；每个标签最多显示 5 条关联；标签和每类记忆数量可由你控制。
-          </p></details>
+            </div>
+          </details>
         </CardContent>
       </Card>
 

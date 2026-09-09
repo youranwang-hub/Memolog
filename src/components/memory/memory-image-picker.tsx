@@ -91,7 +91,7 @@ export function MemoryImagePicker({
   }
 
   return (
-    <div className={compact ? "pt-2" : "space-y-2"}>
+    <div className={compact ? "" : "space-y-2"}>
       {!compact && (
         <div className="flex items-center justify-between gap-3">
           <Label className="text-xs">相关图片</Label>

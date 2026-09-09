@@ -103,14 +103,6 @@ export default function ProfilePage() {
 
   return (
     <div className="journal-page profile-paper">
-      <div className="journal-heading">
-        <p className="journal-eyebrow">关于自己</p>
-        <h1 className="editorial-title">让文字，更像你。</h1>
-        <p className="journal-subtitle">
-          你的背景与偏好，会成为生成文字时的参照。
-        </p>
-      </div>
-
       <Card>
         <CardHeader>
           <CardTitle className="text-base">基础信息</CardTitle>

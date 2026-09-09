@@ -308,7 +308,6 @@ export default function GeneratePage() {
 
   return (
     <div className="journal-page generation-paper lg:max-w-5xl lg:w-full">
-      <header className="journal-heading"><p className="journal-eyebrow">从记忆，到文字</p><h1 className="editorial-title">让经历，有新的表达。</h1><p className="journal-subtitle">简历、自我介绍，或一段你正需要的文字。</p></header>
       {unsaved && <div role="alert" className="mb-4 rounded-md border p-3 text-sm">有生成内容尚未保存。<Button variant="outline" onClick={retryHistory} disabled={savingHistory}>重试保存历史</Button></div>}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_240px] lg:gap-12">
         <div className="min-w-0">

@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronUp, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { createMemory } from "@/lib/memories";
 import { fetchWithAuth } from "@/lib/api-client";
@@ -40,13 +40,11 @@ interface Props {
   userId: string;
   categories: string[];
   onSaved: () => void;
-  mobileOpen?: boolean;
-  onMobileClose?: () => void;
 }
 
 type DateMode = "single" | "range";
 
-export function MemoryForm({ userId, categories, onSaved, mobileOpen = false, onMobileClose }: Props) {
+export function MemoryForm({ userId, categories, onSaved }: Props) {
   const busy = useRef(false);
   const requestRef = useRef<AbortController | null>(null);
   useEffect(() => () => requestRef.current?.abort(), []);
@@ -139,7 +137,6 @@ export function MemoryForm({ userId, categories, onSaved, mobileOpen = false, on
         setDateMode("single");
         setPendingImages([]);
         onSaved();
-        onMobileClose?.();
 
     } catch (err) {
       console.error("Save memory error:", err);
@@ -152,12 +149,12 @@ export function MemoryForm({ userId, categories, onSaved, mobileOpen = false, on
 
   return (
     <>
-      <Card className={`journal-composer${mobileOpen ? " is-mobile-open" : ""}`}>
+      <Card className="journal-composer">
         <CardContent className="p-3">
           <div className="flex flex-col gap-3">
             <div className="flex-1">
               <Textarea
-                placeholder="写下此刻，或想起的一段经历。"
+                placeholder="记录一段经历…"
                 value={rawInput}
                 onChange={(e) => setRawInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -172,13 +169,26 @@ export function MemoryForm({ userId, categories, onSaved, mobileOpen = false, on
             </div>
           </div>
           <div className="composer-footer">
-          <MemoryImagePicker
-            images={pendingImages}
-            onChange={setPendingImages}
-            onProcessingChange={setProcessingImages}
-            disabled={extracting || saving}
-            compact
-          />
+            <MemoryImagePicker
+              images={pendingImages}
+              onChange={setPendingImages}
+              onProcessingChange={setProcessingImages}
+              disabled={extracting || saving}
+              compact
+            />
+            <div className="composer-actions">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setExtracted({ title: rawInput.trim().slice(0, 30), content: rawInput.trim(), result: "", category: categories[0] || "其他", event_date: "未知", event_date_end: null, emotion: "neutral", emotion_note: "", tags: [] });
+                  setShowEditor(true);
+                }}
+                disabled={!rawInput.trim() || extracting || saving || processingImages}
+                className="h-9 shrink-0"
+              >
+                直接记录
+              </Button>
             <Button
               size="sm"
               variant="default"
@@ -189,20 +199,13 @@ export function MemoryForm({ userId, categories, onSaved, mobileOpen = false, on
               {extracting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <span>整理记录</span>
+                <span>AI 整理</span>
               )}
             </Button>
-            <Button type="button" variant="ghost" size="sm" className="mobile-composer-close" onClick={onMobileClose}>
-              收起 <ChevronUp className="ml-1 h-3.5 w-3.5" />
-            </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
-
-      <Button className="mt-2 text-xs text-muted-foreground" variant="ghost" size="sm" disabled={!rawInput.trim() || extracting || saving || processingImages} onClick={() => {
-        setExtracted({ title: rawInput.trim().slice(0, 30), content: rawInput.trim(), result: "", category: categories[0] || "其他", event_date: "未知", event_date_end: null, emotion: "neutral", emotion_note: "", tags: [] });
-        setShowEditor(true);
-      }}>直接记录，稍后整理</Button>
       <Dialog open={showEditor} onOpenChange={(open) => {
         if (saving) return;
         setShowEditor(open);

@@ -87,7 +87,7 @@ export default function AuthPage() {
       <Card className="auth-paper">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Memolog</CardTitle>
-          <CardDescription>让每一段经历，有处安放。</CardDescription>
+          <CardDescription>记录、整理和复用你的经历。</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

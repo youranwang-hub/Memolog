@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter, PenLine, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import type { Memory } from "@/lib/types";
 import { getCategories } from "@/lib/types";
 import { fetchMemories } from "@/lib/memories";
@@ -76,7 +76,6 @@ export default function DashboardPage() {
   const [view, setView] = useState<"heatmap" | "grid" | "graph">("heatmap");
   const [showProfileNudge, setShowProfileNudge] = useState(false);
   const [categories, setCategories] = useState<string[]>(getCategories());
-  const [mobileComposerOpen, setMobileComposerOpen] = useState(false);
 
   function loadMemories() { setRevision(value => value + 1); }
   useEffect(() => {
@@ -200,20 +199,13 @@ export default function DashboardPage() {
 
   return (
     <div className="journal-page">
-      <header className="journal-heading">
-        <p className="journal-eyebrow">我的记忆集</p>
-        <h1 className="editorial-title">把日子，慢慢写下来。</h1>
-      </header>
-      <Button className="mobile-composer-trigger" onClick={() => setMobileComposerOpen(true)}>
-        <PenLine className="mr-2 h-4 w-4" />写一段记忆
-      </Button>
-      <MemoryForm userId={user.id} categories={categories} onSaved={loadMemories} mobileOpen={mobileComposerOpen} onMobileClose={() => setMobileComposerOpen(false)} />
+      <MemoryForm userId={user.id} categories={categories} onSaved={loadMemories} />
 
       {showProfileNudge && <div className="journal-note"><p>补充一点关于你，让生成的文字更贴近自己。</p><Link href="/profile" className="underline underline-offset-4 hover:text-primary">完善档案</Link></div>}
 
       <div className="library-heading">
         <div>
-          <h2>记忆，留在这里。</h2>
+          <h2>全部记忆</h2>
           <p className="library-stats" aria-label={`${allMemories.length} 段经历，${recordedMonths} 个有记录的月份`}>
             <strong>{allMemories.length}</strong><span>段经历</span><i aria-hidden="true" /><strong>{recordedMonths}</strong><span>个有记录的月份</span>
           </p>
@@ -253,19 +245,18 @@ export default function DashboardPage() {
       </div>
 
       <div className="library-toolbar">
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="memory-search relative flex-1 min-w-[200px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="寻找一段记忆…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-9 pl-8 text-sm bg-transparent border-transparent shadow-none focus-visible:border-input"
+            className="h-9 pl-8 text-sm bg-transparent border-0 shadow-none focus-visible:ring-0"
           />
         </div>
         <Select value={category} onValueChange={(v) => setCategory(v ?? "all")}>
-          <SelectTrigger className="h-8 w-[90px] text-sm">
-            <Filter className="h-3 w-3 mr-1" />
-            <SelectValue>{category === "all" ? "全部" : category}</SelectValue>
+          <SelectTrigger className="h-8 w-[112px] text-sm">
+            <SelectValue>{category === "all" ? "全部分类" : category}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">全部分类</SelectItem>
@@ -278,7 +269,7 @@ export default function DashboardPage() {
         </Select>
         {view !== "heatmap" && (
           <Select value={timeFilter} onValueChange={(v) => setTimeFilter((v ?? "all") as TimeFilter)}>
-            <SelectTrigger className="h-8 w-[98px] text-sm">
+            <SelectTrigger className="h-8 w-[112px] text-sm">
               <SelectValue>{timeOptions.find((item) => item.value === timeFilter)?.label ?? "全部时间"}</SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -309,7 +300,7 @@ export default function DashboardPage() {
 
       {queryError ? (<div role="alert" className="text-sm">读取失败，请检查网络。<Button onClick={loadMemories}>重试</Button></div>) : loading ? (
         <div className="flex justify-center py-16">
-          <p role="status" className="text-sm text-muted-foreground motion-safe:animate-pulse">正在翻开记忆…</p>
+          <p role="status" className="text-sm text-muted-foreground motion-safe:animate-pulse">正在加载记忆…</p>
         </div>
       ) : view === "heatmap" ? (
         <MemoryTimeline memories={baseMemories} />

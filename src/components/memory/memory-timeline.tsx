@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { parseEventDay, formatEventDateRange } from "@/lib/dates";
+import { parseEventDay } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { Memory } from "@/lib/types";
 
@@ -66,7 +66,6 @@ export function MemoryTimeline({ memories }: { memories: Memory[] }) {
       return counts;
     }, new Map<string, number>())
   ).sort(([, countA], [, countB]) => countB - countA)[0]?.[0];
-
   function scrollToMonth(month: number) {
     document.getElementById(`memory-month-${year}-${month}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
@@ -90,7 +89,7 @@ export function MemoryTimeline({ memories }: { memories: Memory[] }) {
           </button>
         ))}
       </div>
-      {monthGroups.length === 0 && <p className="py-14 text-center text-sm text-muted-foreground">这一年的纸页，等你慢慢写下。</p>}
+      {monthGroups.length === 0 && <p className="py-14 text-center text-sm text-muted-foreground">这一年还没有记录。</p>}
       {monthGroups.map(group => (
         <section key={group.month} id={`memory-month-${year}-${group.month}`} className="timeline-month scroll-mt-24">
           <div><p className="timeline-month-label">{String(group.month + 1).padStart(2, "0")}</p><p className="mt-1 text-[10px] text-muted-foreground">月</p></div>
@@ -101,8 +100,10 @@ export function MemoryTimeline({ memories }: { memories: Memory[] }) {
                   <h3 className="min-w-0 break-words text-base font-medium leading-7">{memory.title || "未命名经历"}</h3>
                   <span className="shrink-0 text-xs text-muted-foreground">{formatTimelineDate(memory)}</span>
                 </div>
-                <p className="mt-2 line-clamp-2 text-sm leading-7 text-muted-foreground">{memory.result || memory.content || formatEventDateRange(memory.event_date, memory.event_date_end)}</p>
-                <p className="mt-3 text-[11px] text-muted-foreground"><CategoryLabel category={memory.category} />{memory.tags.length > 0 ? ` · ${memory.tags.slice(0, 2).join(" / ")}` : ""}</p>
+                <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+                  <CategoryLabel category={memory.category} />
+                  {memory.tags.length > 0 && <span>{memory.tags.slice(0, 3).map((tag) => `# ${tag}`).join(" · ")}</span>}
+                </p>
               </Link>
             ))}
           </div>
