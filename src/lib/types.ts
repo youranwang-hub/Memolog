@@ -80,7 +80,6 @@ export interface Profile {
   school: string;
   major: string;
   grade: string;
-  target_direction: string;
   contact_email: string;
   contact_phone: string;
   preferred_tone: string;

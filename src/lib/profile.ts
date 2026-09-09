@@ -14,10 +14,9 @@ export function createEmptyProfile(userId: string, email?: string): ProfileInput
     school: "",
     major: "",
     grade: "",
-    target_direction: "",
     contact_email: email ?? "",
     contact_phone: "",
-    preferred_tone: "自然、具体、不过度夸张",
+    preferred_tone: "自然真诚",
     extra_info: "",
     custom_categories: [...DEFAULT_CATEGORIES],
   };

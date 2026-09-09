@@ -8,14 +8,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Image from "next/image";
-import { Heart, Plus, X } from "lucide-react";
+import { ArrowUpRight, Heart, Mail, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import type { ProfileInput } from "@/lib/types";
 import { createEmptyProfile, fetchProfile, saveProfile } from "@/lib/profile";
 import { PersonalSiteSync } from "@/components/personal-site-sync";
+
+const TONE_OPTIONS = ["自然真诚", "详尽清晰", "克制冷静", "自信有力", "简洁直接"];
+
+function normalizeTone(value: string) {
+  return TONE_OPTIONS.includes(value) ? value : "自然真诚";
+}
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -35,7 +42,8 @@ export default function ProfilePage() {
       try {
         const data = await fetchProfile(user.id);
         if (!active) return;
-        setProfile(data ?? createEmptyProfile(user.id, user.email));
+        const nextProfile = data ?? createEmptyProfile(user.id, user.email);
+        setProfile({ ...nextProfile, preferred_tone: normalizeTone(nextProfile.preferred_tone) });
       } catch {
         if (active) {
           setProfile(createEmptyProfile(user.id, user.email));
@@ -127,23 +135,26 @@ export default function ProfilePage() {
               placeholder="可留空，需要时再填"
             />
           </div>
+          <div className="space-y-1.5">
+            <Label className="text-sm">常用邮箱</Label>
+            <Input value={profile.contact_email} onChange={(event) => updateField("contact_email", event.target.value)} placeholder="用于简历，可留空" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-sm">联系电话</Label>
+            <Input value={profile.contact_phone} onChange={(event) => updateField("contact_phone", event.target.value)} placeholder="用于简历，可留空" />
+          </div>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">个人网站同步</CardTitle></CardHeader>
-        <CardContent><PersonalSiteSync /></CardContent>
-      </Card>
-
-      <Card className="support-card">
-        <CardContent className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="font-medium text-sm">支持 Memolog</p>
-            <p className="mt-1 text-sm text-muted-foreground">如果它对你有帮助，欢迎请我喝杯咖啡。</p>
-          </div>
-          <Button type="button" variant="outline" size="sm" onClick={() => setSupportOpen(true)}>
-            <Heart className="mr-1.5 h-3.5 w-3.5" />赞赏支持
-          </Button>
+        <CardHeader>
+          <CardTitle className="text-base">当前阶段</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3 sm:gap-4">
+          <div className="space-y-1.5"><Label className="text-sm">身份阶段</Label><Input value={profile.identity_stage} onChange={(event) => updateField("identity_stage", event.target.value)} placeholder="如：本科生 / 研究生 / 求职中" /></div>
+          <div className="space-y-1.5"><Label className="text-sm">年级</Label><Input value={profile.grade} onChange={(event) => updateField("grade", event.target.value)} placeholder="如：大三 / 研一" /></div>
+          <div className="space-y-1.5"><Label className="text-sm">学校</Label><Input value={profile.school} onChange={(event) => updateField("school", event.target.value)} placeholder="如：某某大学" /></div>
+          <div className="space-y-1.5"><Label className="text-sm">专业</Label><Input value={profile.major} onChange={(event) => updateField("major", event.target.value)} placeholder="如：数据科学与大数据技术" /></div>
         </CardContent>
       </Card>
 
@@ -173,7 +184,6 @@ export default function ProfilePage() {
               添加
             </Button>
           </div>
-          <Button variant="outline" onClick={handleSave} disabled={saving || !dirty}>{saving ? "保存中…" : dirty ? "保存分类与档案" : "已保存"}</Button>
           {profile.custom_categories.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {profile.custom_categories.map((category) => (
@@ -196,104 +206,24 @@ export default function ProfilePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">当前阶段</CardTitle>
+          <CardTitle className="text-base">生成偏好</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-3 sm:gap-4">
+        <CardContent className="space-y-4">
           <div className="space-y-1.5">
-            <Label className="text-sm">身份阶段</Label>
-            <Input
-              value={profile.identity_stage}
-              onChange={(event) => updateField("identity_stage", event.target.value)}
-              placeholder="如：本科生 / 研究生 / 求职中"
-            />
+            <Label className="text-sm">生成语气</Label>
+            <Select value={profile.preferred_tone} onValueChange={(value) => updateField("preferred_tone", value ?? "自然真诚")}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>{TONE_OPTIONS.map((tone) => <SelectItem key={tone} value={tone}>{tone}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-sm">年级</Label>
-            <Input
-              value={profile.grade}
-              onChange={(event) => updateField("grade", event.target.value)}
-              placeholder="如：大三 / 研一"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-sm">学校</Label>
-            <Input
-              value={profile.school}
-              onChange={(event) => updateField("school", event.target.value)}
-              placeholder="如：某某大学"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-sm">专业</Label>
-            <Input
-              value={profile.major}
-              onChange={(event) => updateField("major", event.target.value)}
-              placeholder="如：数据科学与大数据技术"
-            />
+            <Label className="text-sm">背景信息</Label>
+            <Textarea value={profile.extra_info} onChange={(event) => updateField("extra_info", event.target.value)} placeholder="如：所在城市、长期目标、个人偏好等，均可自愿填写。" rows={4} className="resize-none" />
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">生成偏好</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label className="text-sm">目标方向</Label>
-              <Input
-                value={profile.target_direction}
-                onChange={(event) => updateField("target_direction", event.target.value)}
-                placeholder="如：数据分析 / 产品经理 / 算法"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">生成语气</Label>
-              <Input
-                value={profile.preferred_tone}
-                onChange={(event) => updateField("preferred_tone", event.target.value)}
-                placeholder="如：自然、有条理、不要太夸张"
-              />
-            </div>
-          </div>
-          <details className="rounded-md border bg-muted/20 px-3 py-2.5">
-            <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
-              更多可选信息
-            </summary>
-            <div className="mt-4 space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label className="text-sm">常用邮箱</Label>
-                  <Input
-                    value={profile.contact_email}
-                    onChange={(event) => updateField("contact_email", event.target.value)}
-                    placeholder="用于简历，可留空"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-sm">联系电话</Label>
-                  <Input
-                    value={profile.contact_phone}
-                    onChange={(event) => updateField("contact_phone", event.target.value)}
-                    placeholder="用于简历，可留空"
-                  />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm">补充信息</Label>
-                <Textarea
-                  value={profile.extra_info}
-                  onChange={(event) => updateField("extra_info", event.target.value)}
-                  placeholder="如：城市、长期目标、个人偏好等，均可自愿填写。"
-                  rows={4}
-                  className="resize-none"
-                />
-              </div>
-            </div>
-          </details>
-        </CardContent>
-      </Card>
+      <PersonalSiteSync />
 
       <div className="flex items-center justify-end gap-3">
         {dirty && <span className="text-sm text-muted-foreground">有未保存的修改</span>}
@@ -301,6 +231,22 @@ export default function ProfilePage() {
           {saving ? "保存中..." : "保存档案"}
         </Button>
       </div>
+
+      <section className="profile-support" aria-label="支持与联系">
+        <p>支持与联系</p>
+        <div className="profile-support-actions">
+          <button type="button" className="profile-support-action" onClick={() => setSupportOpen(true)}>
+            <Heart className="profile-support-icon" />
+            <span><strong>赞赏支持</strong><small>如果 Memolog 对你有帮助</small></span>
+            <ArrowUpRight className="profile-support-arrow" />
+          </button>
+          <a className="profile-support-action" href="mailto:949663303@qq.com?subject=Memolog%20反馈与联系">
+            <Mail className="profile-support-icon" />
+            <span><strong>反馈与联系</strong><small>有想法，欢迎告诉我</small></span>
+            <ArrowUpRight className="profile-support-arrow" />
+          </a>
+        </div>
+      </section>
 
       <Dialog open={supportOpen} onOpenChange={setSupportOpen}>
         <DialogContent className="max-w-sm">
