@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# Local design references (not used by the app)
+/public/memolog-icon-pen-candidate.png
+
 # debug
 npm-debug.log*
 yarn-debug.log*
