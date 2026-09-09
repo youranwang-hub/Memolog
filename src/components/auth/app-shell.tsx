@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/components/auth/auth-provider";
-import { KeyRound, LogOut, Mail, User } from "lucide-react";
+import { KeyRound, LogOut, Mail, Settings } from "lucide-react";
 import { toast } from "sonner";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -143,7 +143,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 variant={isProfileActive ? "secondary" : "ghost"}
                 size="sm"
                 onClick={() => router.push("/profile")}
-                aria-label="档案"
+                aria-label="个人档案：背景与生成偏好"
+                title="个人档案：背景与生成偏好"
                 aria-current={isProfileActive ? "page" : undefined}
               >
                 <span className="inline">档案</span>
@@ -158,14 +159,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               size="icon-sm"
               className="rounded-full"
               onClick={() => setAccountMenuOpen((open) => !open)}
-              aria-label="账户菜单"
-              title="账户菜单"
+              aria-label="账户与安全"
+              title="账户与安全"
             >
-              <User className="h-4 w-4" />
+              <Settings className="h-4 w-4" />
             </Button>
             {accountMenuOpen && (
               <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-52 rounded-lg border bg-popover p-1 text-popover-foreground shadow-md">
-                <p className="truncate px-2 py-1.5 text-xs text-muted-foreground">{user.email}</p>
+                <p className="px-2 pt-1.5 text-[11px] tracking-wide text-muted-foreground">账户与安全</p>
+                <p className="truncate px-2 pb-1.5 text-xs text-muted-foreground">{user.email}</p>
                 <button
                   type="button"
                   className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
@@ -176,7 +178,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   }}
                 >
                   <KeyRound className="h-4 w-4" />
-                  修改密码
+                  修改登录密码
                 </button>
                 <button
                   type="button"
@@ -187,7 +189,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   }}
                 >
                   <LogOut className="h-4 w-4" />
-                  退出登录
+                  退出当前账号
                 </button>
               </div>
             )}

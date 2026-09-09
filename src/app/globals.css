@@ -182,10 +182,14 @@
 .journal-composer textarea { min-height: 110px; font-size: 16px; line-height: 1.9; }
 .journal-composer:focus-within { border-color: var(--terracotta); }
 .composer-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 16px; border-top: 1px solid var(--border); }
+.mobile-composer-trigger, .mobile-composer-close { display: none; }
 .journal-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 0; font-size: 12px; color: var(--muted-foreground); }
 .library-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 18px 0; border-top: 1px solid var(--border); }
 .library-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-top: 40px; }
 .library-heading h2 { font-family: var(--font-editorial); font-size: 22px; font-weight: 400; }
+.library-stats { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px; margin-top: 9px; color: var(--muted-foreground); font-size: 12px; line-height: 1.5; }
+.library-stats strong { color: var(--primary); font-family: var(--font-editorial); font-size: 24px; font-weight: 400; line-height: 1; }
+.library-stats i { width: 3px; height: 3px; margin: 0 5px; border-radius: 999px; background: var(--terracotta); }
 .library-tabs { display: flex; align-items: center; gap: 4px; }
 .library-tabs button { background: transparent; color: var(--muted-foreground); }
 .library-tabs button[aria-pressed="true"] { color: var(--primary); background: var(--accent); }
@@ -227,6 +231,11 @@
   .journal-brand { font-size: 21px; gap: 7px; }
   .journal-nav button { padding-inline: 8px; font-size: 12px; }
   .journal-composer [data-slot="card-content"] { padding: 18px; }
+  .mobile-composer-trigger { display: inline-flex; width: 100%; justify-content: center; margin-bottom: 12px; }
+  .journal-composer:not(.is-mobile-open) { display: none; }
+  .mobile-composer-close { display: inline-flex; }
+  .library-heading { margin-top: 28px; }
+  .library-stats strong { font-size: 22px; }
   .memory-list-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .memory-row { padding: 16px 18px; }
   .timeline-month { grid-template-columns: 28px minmax(0,1fr); gap: 12px; }

@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { ChevronUp, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { createMemory } from "@/lib/memories";
 import { fetchWithAuth } from "@/lib/api-client";
@@ -40,11 +40,13 @@ interface Props {
   userId: string;
   categories: string[];
   onSaved: () => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 type DateMode = "single" | "range";
 
-export function MemoryForm({ userId, categories, onSaved }: Props) {
+export function MemoryForm({ userId, categories, onSaved, mobileOpen = false, onMobileClose }: Props) {
   const busy = useRef(false);
   const requestRef = useRef<AbortController | null>(null);
   useEffect(() => () => requestRef.current?.abort(), []);
@@ -137,6 +139,7 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
         setDateMode("single");
         setPendingImages([]);
         onSaved();
+        onMobileClose?.();
 
     } catch (err) {
       console.error("Save memory error:", err);
@@ -149,7 +152,7 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
 
   return (
     <>
-      <Card className="journal-composer">
+      <Card className={`journal-composer${mobileOpen ? " is-mobile-open" : ""}`}>
         <CardContent className="p-3">
           <div className="flex flex-col gap-3">
             <div className="flex-1">
@@ -188,6 +191,9 @@ export function MemoryForm({ userId, categories, onSaved }: Props) {
               ) : (
                 <span>整理记录</span>
               )}
+            </Button>
+            <Button type="button" variant="ghost" size="sm" className="mobile-composer-close" onClick={onMobileClose}>
+              收起 <ChevronUp className="ml-1 h-3.5 w-3.5" />
             </Button>
           </div>
         </CardContent>

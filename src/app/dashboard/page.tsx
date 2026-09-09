@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter, X } from "lucide-react";
+import { Search, Filter, PenLine, X } from "lucide-react";
 import type { Memory } from "@/lib/types";
 import { getCategories } from "@/lib/types";
 import { fetchMemories } from "@/lib/memories";
@@ -76,6 +76,7 @@ export default function DashboardPage() {
   const [view, setView] = useState<"heatmap" | "grid" | "graph">("heatmap");
   const [showProfileNudge, setShowProfileNudge] = useState(false);
   const [categories, setCategories] = useState<string[]>(getCategories());
+  const [mobileComposerOpen, setMobileComposerOpen] = useState(false);
 
   function loadMemories() { setRevision(value => value + 1); }
   useEffect(() => {
@@ -105,6 +106,7 @@ export default function DashboardPage() {
     return (category === "all" || memory.category === category) && (!term || [memory.title, memory.content, ...memory.tags].some(value => value.toLocaleLowerCase().includes(term)));
   }), [allMemories, category, debouncedSearch]);
   const memories = useMemo(() => baseMemories.filter(memory => matchesTimeFilter(memory, timeFilter)), [baseMemories, timeFilter]);
+  const recordedMonths = useMemo(() => new Set(allMemories.map(getEventMonthKey).filter((value): value is string => Boolean(value))).size, [allMemories]);
 
   useEffect(() => {
     let active = true;
@@ -202,19 +204,18 @@ export default function DashboardPage() {
         <p className="journal-eyebrow">我的记忆集</p>
         <h1 className="editorial-title">把日子，慢慢写下来。</h1>
       </header>
-      <MemoryForm userId={user.id} categories={categories} onSaved={loadMemories} />
+      <Button className="mobile-composer-trigger" onClick={() => setMobileComposerOpen(true)}>
+        <PenLine className="mr-2 h-4 w-4" />写一段记忆
+      </Button>
+      <MemoryForm userId={user.id} categories={categories} onSaved={loadMemories} mobileOpen={mobileComposerOpen} onMobileClose={() => setMobileComposerOpen(false)} />
 
       {showProfileNudge && <div className="journal-note"><p>补充一点关于你，让生成的文字更贴近自己。</p><Link href="/profile" className="underline underline-offset-4 hover:text-primary">完善档案</Link></div>}
 
       <div className="library-heading">
         <div>
           <h2>记忆，留在这里。</h2>
-          <p className="text-xs text-muted-foreground">
-            {view === "heatmap"
-              ? "按经历发生日期回望这一年"
-              : view === "graph"
-                ? "从分类、标签和经历之间看见自己的成长路径"
-                : `${memories.length} 条记录`}
+          <p className="library-stats" aria-label={`${allMemories.length} 段经历，${recordedMonths} 个有记录的月份`}>
+            <strong>{allMemories.length}</strong><span>段经历</span><i aria-hidden="true" /><strong>{recordedMonths}</strong><span>个有记录的月份</span>
           </p>
         </div>
         <div className="library-tabs">
