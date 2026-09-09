@@ -9,7 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import Image from "next/image";
+import { Heart, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import type { ProfileInput } from "@/lib/types";
 import { createEmptyProfile, fetchProfile, saveProfile } from "@/lib/profile";
@@ -22,6 +24,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [newCategory, setNewCategory] = useState("");
+  const [supportOpen, setSupportOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -107,7 +110,7 @@ export default function ProfilePage() {
         <CardHeader>
           <CardTitle className="text-base">基础信息</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
+        <CardContent className="grid grid-cols-2 gap-3 sm:gap-4">
           <div className="space-y-1.5">
             <Label className="text-sm">希望 Memolog 怎么称呼你</Label>
             <Input
@@ -130,6 +133,18 @@ export default function ProfilePage() {
       <Card>
         <CardHeader><CardTitle className="text-base">个人网站同步</CardTitle></CardHeader>
         <CardContent><PersonalSiteSync /></CardContent>
+      </Card>
+
+      <Card className="support-card">
+        <CardContent className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="font-medium text-sm">支持 Memolog</p>
+            <p className="mt-1 text-sm text-muted-foreground">如果它对你有帮助，欢迎请我喝杯咖啡。</p>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={() => setSupportOpen(true)}>
+            <Heart className="mr-1.5 h-3.5 w-3.5" />赞赏支持
+          </Button>
+        </CardContent>
       </Card>
 
       <Card>
@@ -183,7 +198,7 @@ export default function ProfilePage() {
         <CardHeader>
           <CardTitle className="text-base">当前阶段</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
+        <CardContent className="grid grid-cols-2 gap-3 sm:gap-4">
           <div className="space-y-1.5">
             <Label className="text-sm">身份阶段</Label>
             <Input
@@ -286,6 +301,16 @@ export default function ProfilePage() {
           {saving ? "保存中..." : "保存档案"}
         </Button>
       </div>
+
+      <Dialog open={supportOpen} onOpenChange={setSupportOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>支持 Memolog</DialogTitle>
+            <DialogDescription>使用微信扫一扫，感谢你的支持。</DialogDescription>
+          </DialogHeader>
+          <Image src="/support-wechat.jpg" alt="Memolog 微信赞赏码" width={900} height={900} className="mx-auto w-full max-w-[280px] rounded-lg" priority />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,13 +1,14 @@
 "use client";
 import { MIN_PASSWORD_LENGTH } from "@/lib/auth-rules";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { Turnstile } from "@/components/auth/turnstile";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -16,7 +17,9 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
   const { user, loading: authLoading, signIn, signUp, sendPasswordResetEmail } = useAuth();
+  const clearTurnstileToken = useCallback(() => setTurnstileToken(""), []);
 
   // Already signed in -> redirect to dashboard
   useEffect(() => {
@@ -39,6 +42,23 @@ export default function AuthPage() {
       }
       window.location.href = "/dashboard";
     } else {
+      if (!turnstileToken) {
+        setErrorMsg("请先完成人机验证");
+        setLoading(false);
+        return;
+      }
+      const verification = await fetch("/api/turnstile/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: turnstileToken }),
+      });
+      if (!verification.ok) {
+        const data = await verification.json().catch(() => ({}));
+        setErrorMsg(data.error || "人机验证未通过，请重试");
+        setTurnstileToken("");
+        setLoading(false);
+        return;
+      }
       const { error, success } = await signUp(email, password);
       if (error) {
         setErrorMsg(error);
@@ -102,6 +122,8 @@ export default function AuthPage() {
                 required
               />
             </div>
+
+            {!isLogin && <Turnstile onVerify={setTurnstileToken} onExpire={clearTurnstileToken} />}
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="password">密码</Label>
@@ -145,10 +167,14 @@ export default function AuthPage() {
               onClick={() => {
                 setIsLogin(!isLogin);
                 setErrorMsg("");
+                setTurnstileToken("");
               }}
             >
               {isLogin ? "注册" : "登录"}
             </button>
+          </p>
+          <p className="mt-5 text-center text-xs leading-5 text-muted-foreground">
+            注册即表示你已阅读并同意 <a href="/privacy" className="underline underline-offset-2 hover:text-foreground">隐私与 AI 使用说明</a>。
           </p>
         </CardContent>
       </Card>

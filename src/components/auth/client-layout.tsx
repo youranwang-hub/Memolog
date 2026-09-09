@@ -9,6 +9,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
   const isPublicPage =
     pathname === "/" ||
+    pathname === "/privacy" ||
     pathname === "/reset-password" ||
     pathname.startsWith("/auth/");
 

@@ -55,6 +55,10 @@ DEEPSEEK_API_KEY=your-deepseek-api-key
 
 # 可选：DeepSeek 模型，默认 deepseek-chat
 DEEPSEEK_MODEL=deepseek-chat
+
+# Cloudflare Turnstile（注册人机验证）
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=your-turnstile-site-key
+TURNSTILE_SECRET_KEY=your-turnstile-secret-key
 ```
 
 #### Supabase 初始化
@@ -127,6 +131,7 @@ src/
 - AI 密钥仅在服务端路由中使用，切勿将 `DEEPSEEK_API_KEY` 暴露到浏览器端。
 - 个人网站同步仅允许 `MEMOLOG_PERSONAL_SITE_OWNER_USER_ID`（或邮箱）指定的账号。GitHub Fine-grained Token 只配置在 Vercel 的 `GITHUB_PERSONAL_SITE_TOKEN`，浏览器和 Supabase 均不会收到它。
 - 生成内容基于用户保存的记忆与档案；使用前请自行核对事实和措辞。
+- 注册需要通过 Cloudflare Turnstile 人机验证；请同时在部署环境配置 Site Key 与 Secret Key。
 
 部署到 [Vercel](https://vercel.com/) 时，填入与 `.env.local` 相同的服务端变量，并在 Supabase Auth 中将 `https://your-domain/auth/callback` 与 `https://your-domain/reset-password` 加入 Redirect URLs。
 
