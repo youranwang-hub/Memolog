@@ -95,7 +95,7 @@ export function MemoryTimeline({ memories }: { memories: Memory[] }) {
           <div><p className="timeline-month-label">{String(group.month + 1).padStart(2, "0")}</p><p className="mt-1 text-[10px] text-muted-foreground">月</p></div>
           <div className="min-w-0 border-t">
             {group.memories.map(memory => (
-              <Link key={memory.id} href={`/memory/${memory.id}`} className="timeline-entry">
+              <Link key={memory.id} href={`/memory/${memory.id}`} className="timeline-entry" onClick={() => sessionStorage.setItem("memolog-library-scroll", String(window.scrollY))}>
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                   <h3 className="min-w-0 break-words text-base font-medium leading-7">{memory.title || "未命名经历"}</h3>
                   <span className="shrink-0 text-xs text-muted-foreground">{formatTimelineDate(memory)}</span>
@@ -109,7 +109,7 @@ export function MemoryTimeline({ memories }: { memories: Memory[] }) {
           </div>
         </section>
       ))}
-      {undated.length > 0 && <details className="mt-8 border-t py-5"><summary className="cursor-pointer text-sm text-muted-foreground">日期待补充 · {undated.length} 条</summary><div className="mt-3">{undated.map(memory => <Link className="timeline-entry text-sm" key={memory.id} href={`/memory/${memory.id}`}>{memory.title}</Link>)}</div></details>}
+      {undated.length > 0 && <details className="mt-8 border-t py-5"><summary className="cursor-pointer text-sm text-muted-foreground">日期待补充 · {undated.length} 条</summary><div className="mt-3">{undated.map(memory => <Link className="timeline-entry text-sm" key={memory.id} href={`/memory/${memory.id}`} onClick={() => sessionStorage.setItem("memolog-library-scroll", String(window.scrollY))}>{memory.title}</Link>)}</div></details>}
     </section>
   );
 }

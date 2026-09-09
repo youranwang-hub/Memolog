@@ -4,7 +4,7 @@ import { CategoryLabel } from "@/components/memory/category-label";
 import Link from "next/link";
 import { toast } from "sonner";
 import { parseEventDay } from "@/lib/dates";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { MemoryForm } from "@/components/memory/memory-form";
 import { MemoryCard } from "@/components/memory/memory-card";
@@ -76,6 +76,7 @@ export default function DashboardPage() {
   const [view, setView] = useState<"heatmap" | "grid" | "graph">("heatmap");
   const [showProfileNudge, setShowProfileNudge] = useState(false);
   const [categories, setCategories] = useState<string[]>(getCategories());
+  const restoredScrollRef = useRef(false);
 
   function loadMemories() { setRevision(value => value + 1); }
   useEffect(() => {
@@ -136,6 +137,19 @@ export default function DashboardPage() {
       controller.abort();
     };
   }, [user, revision]);
+
+  useEffect(() => {
+    if (loading || restoredScrollRef.current) return;
+    const savedPosition = sessionStorage.getItem("memolog-library-scroll");
+    if (!savedPosition) return;
+
+    const top = Number(savedPosition);
+    sessionStorage.removeItem("memolog-library-scroll");
+    restoredScrollRef.current = true;
+    if (!Number.isFinite(top)) return;
+
+    requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo({ top, behavior: "auto" })));
+  }, [loading]);
 
   useEffect(() => {
     let active = true;

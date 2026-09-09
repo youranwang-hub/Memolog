@@ -1,3 +1,5 @@
+"use client";
+
 import { CategoryLabel } from "@/components/memory/category-label";
 import Link from "next/link";
 import type { Memory } from "@/lib/types";
@@ -6,7 +8,7 @@ import { formatEventDateRange } from "@/lib/dates";
 
 export function MemoryCard({ memory }: { memory: Memory }) {
   return (
-    <Link href={`/memory/${memory.id}`} className="memory-row">
+    <Link href={`/memory/${memory.id}`} className="memory-row" onClick={() => sessionStorage.setItem("memolog-library-scroll", String(window.scrollY))}>
       <span className="memory-row-date">{formatEventDateRange(memory.event_date, memory.event_date_end)}</span>
       <div className="min-w-0 flex flex-1 flex-col">
         <h3 className="line-clamp-2">{memory.title || "未命名经历"}</h3>
