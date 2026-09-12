@@ -8,10 +8,13 @@ export async function POST(request: Request) {
   try {
     const { token } = await request.json();
     if (typeof token !== "string" || !token) return NextResponse.json({ error: "请先完成人机验证" }, { status: 400 });
-    const body = new FormData();
-    body.set("secret", secret);
-    body.set("response", token);
-    const response = await fetch(verifyUrl, { method: "POST", body, cache: "no-store" });
+    const body = new URLSearchParams({ secret, response: token });
+    const response = await fetch(verifyUrl, {
+      method: "POST",
+      body,
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      cache: "no-store",
+    });
     if (!response.ok) throw new Error(`Turnstile returned ${response.status}`);
     const result = await response.json() as { success?: boolean };
     if (!result.success) return NextResponse.json({ error: "人机验证未通过，请重试" }, { status: 400 });
