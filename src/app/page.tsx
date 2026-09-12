@@ -18,8 +18,16 @@ export default function AuthPage() {
   const [resetLoading, setResetLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileVersion, setTurnstileVersion] = useState(0);
   const { user, loading: authLoading, signIn, signUp, sendPasswordResetEmail } = useAuth();
-  const clearTurnstileToken = useCallback(() => setTurnstileToken(""), []);
+  const resetTurnstile = useCallback(() => {
+    setTurnstileToken("");
+    setTurnstileVersion((version) => version + 1);
+  }, []);
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token);
+    setErrorMsg("");
+  }, []);
 
   // Already signed in -> redirect to dashboard
   useEffect(() => {
@@ -55,13 +63,14 @@ export default function AuthPage() {
       if (!verification.ok) {
         const data = await verification.json().catch(() => ({}));
         setErrorMsg(data.error || "人机验证未通过，请重试");
-        setTurnstileToken("");
+        resetTurnstile();
         setLoading(false);
         return;
       }
       const { error, success } = await signUp(email, password);
       if (error) {
         setErrorMsg(error);
+        resetTurnstile();
       } else if (success) {
         toast.success("注册成功！请查看邮箱确认链接", { duration: 10000 });
         setIsLogin(true);
@@ -123,7 +132,14 @@ export default function AuthPage() {
               />
             </div>
 
-            {!isLogin && <Turnstile onVerify={setTurnstileToken} onExpire={clearTurnstileToken} />}
+            {!isLogin && (
+              <div className="space-y-1.5">
+                <Turnstile key={turnstileVersion} onVerify={handleTurnstileVerify} onExpire={resetTurnstile} />
+                <p className="text-xs text-muted-foreground" aria-live="polite">
+                  {turnstileToken ? "人机验证已完成" : "请完成人机验证后注册"}
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="password">密码</Label>
@@ -155,8 +171,8 @@ export default function AuthPage() {
               </p>
             )}
 
-            <Button type="submit" className="w-full h-10" disabled={loading || resetLoading}>
-              {loading ? "处理中..." : isLogin ? "登录" : "注册"}
+            <Button type="submit" className="w-full h-10" disabled={loading || resetLoading || (!isLogin && !turnstileToken)}>
+              {loading ? "处理中..." : !isLogin && !turnstileToken ? "等待人机验证..." : isLogin ? "登录" : "注册"}
             </Button>
           </form>
           <p className="text-center text-sm text-muted-foreground mt-4">
@@ -167,7 +183,7 @@ export default function AuthPage() {
               onClick={() => {
                 setIsLogin(!isLogin);
                 setErrorMsg("");
-                setTurnstileToken("");
+                resetTurnstile();
               }}
             >
               {isLogin ? "注册" : "登录"}
